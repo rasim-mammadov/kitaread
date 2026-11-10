@@ -273,6 +273,21 @@ class MainActivity : Activity() {
             isChecked=settings.getBoolean("fitWidth",false)
             setOnCheckedChangeListener {_,value->settings.edit().putBoolean("fitWidth",value).apply()}
         })
+        content.addView(TextView(this).apply {text="İllik kitab hədəfi";textSize=18f;setTextColor(fg());setPadding(0,dp(18),0,0)})
+        val goal=EditText(this).apply {
+            inputType=android.text.InputType.TYPE_CLASS_NUMBER
+            setText(settings.getInt("annualGoal",24).toString());setTextColor(fg())
+        }
+        content.addView(goal)
+        content.addView(action("Hədəfi saxla") {
+            settings.edit().putInt("annualGoal",goal.text.toString().toIntOrNull()?.coerceIn(1,999) ?:24).apply()
+            Toast.makeText(this,"Hədəf saxlanıldı",Toast.LENGTH_SHORT).show()
+        })
+        content.addView(CheckBox(this).apply {
+            text="CBZ: Sağdan-sola səhifə çevirmə"
+            setTextColor(fg());isChecked=settings.getBoolean("cbzRtl",false)
+            setOnCheckedChangeListener {_,checked->settings.edit().putBoolean("cbzRtl",checked).apply()}
+        })
         content.addView(action("JSON məlumatları export et") {jsonExport()})
         content.addView(action("JSON məlumatları import et") {jsonImport()})
         addNav("Ayarlar")
@@ -289,14 +304,25 @@ class MainActivity : Activity() {
         },82)
     }
     private fun options(b: JSONObject) {
-        val choices=arrayOf("Oxunmayıb","Oxunur","Bitirilib","Yarımçıq saxlanılıb","Sil")
+        val choices=arrayOf("Oxunmayıb","Oxunur","Bitirilib","Yarımçıq saxlanılıb","Şəxsi qeyd","Sil")
         AlertDialog.Builder(this).setTitle(b.optString("title")).setItems(choices) { _,n ->
-            if(n==4) AlertDialog.Builder(this).setMessage("Kitab və oxu qeydi silinsin?")
+            if(n==5) AlertDialog.Builder(this).setMessage("Kitab və oxu qeydi silinsin?")
                 .setPositiveButton("Sil") { _,_ ->
                     File(filesDir,b.getString("path")).delete(); books.remove(b); save(); shelf()
                 }.setNegativeButton("Ləğv et",null).show()
+            else if(n==4)editNote(b)
             else { if(n==2)markFinished(b) else b.put("status",choices[n]);save();shelf() }
         }.show()
+    }
+    private fun editNote(book:JSONObject) {
+        val editor=EditText(this).apply {
+            minLines=4;setText(book.optString("note"));hint="Bu kitab haqqında qeydlərin"
+        }
+        AlertDialog.Builder(this).setTitle("Şəxsi qeyd")
+            .setView(editor)
+            .setPositiveButton("Saxla") {_,_->
+                book.put("note",editor.text.toString());save()
+            }.setNegativeButton("Ləğv et",null).show()
     }
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
