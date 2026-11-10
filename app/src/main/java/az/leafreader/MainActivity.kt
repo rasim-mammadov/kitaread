@@ -300,7 +300,40 @@ class MainActivity : Activity() {
     }
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
-        if(requestCode!=42 || resultCode!=RESULT_OK) return
+        if(resultCode!=RESULT_OK)return
+        if(requestCode==81) {
+            data?.data?.let { uri ->
+                try {
+                    contentResolver.openOutputStream(uri)?.use { stream ->
+                        val arr=JSONArray()
+                        books.forEach {arr.put(it)}
+                        stream.write(JSONObject().put("schemaVersion",2).put("books",arr).toString(2).toByteArray(Charsets.UTF_8))
+                    }
+                    Toast.makeText(this,"JSON backup yaradıldı",Toast.LENGTH_LONG).show()
+                }catch(e:Exception){Toast.makeText(this,e.message,Toast.LENGTH_LONG).show()}
+            }
+            return
+        }
+        if(requestCode==82) {
+            data?.data?.let { uri ->
+                try {
+                    val json=contentResolver.openInputStream(uri)!!.bufferedReader().use {it.readText()}
+                    val arr=JSONObject(json).getJSONArray("books")
+                    val known=books.map {it.optString("path")}.toMutableSet()
+                    for(i in 0 until arr.length()) {
+                        val book=arr.getJSONObject(i)
+                        val id=book.optString("path")
+                        if(id !in known && File(filesDir,id).exists()) {
+                            books.add(book);known.add(id)
+                        }
+                    }
+                    save();shelf()
+                    Toast.makeText(this,"Qeydlər import edildi. Fayl özü ayrıca tələb olunur.",Toast.LENGTH_LONG).show()
+                }catch(e:Exception){Toast.makeText(this,"JSON xətası: "+e.message,Toast.LENGTH_LONG).show()}
+            }
+            return
+        }
+        if(requestCode!=42)return
         val uri=data?.data ?: return
         val title=contentResolver.query(uri,null,null,null,null)?.use { c ->
             if(c.moveToFirst()) {
