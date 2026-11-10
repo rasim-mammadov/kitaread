@@ -40,6 +40,17 @@ class MainActivity : Activity() {
     private var headerView: View? = null
     private var footerView: View? = null
     private var readerBarsVisible = true
+    private var readingSince = 0L
+    private fun accountReadingTime() {
+        val book=current ?: return
+        if(readingSince<=0L)return
+        val elapsed=(android.os.SystemClock.elapsedRealtime()-readingSince).coerceAtLeast(0L)
+        if(elapsed>0L && elapsed<12L*60*60*1000) {
+            book.put("readingMs",book.optLong("readingMs",0L)+elapsed)
+        }
+        readingSince=0L
+        save()
+    }
     private val settings by lazy { getSharedPreferences("reader_settings", MODE_PRIVATE) }
     private fun setFullScreen(enabled: Boolean) {
         @Suppress("DEPRECATION")
@@ -243,12 +254,21 @@ class MainActivity : Activity() {
         listOf("Ümumi kitab sayı" to books.size.toString(),
             "Bitirilmiş kitablar" to completedBooks.size.toString(),
             "Hazırda oxunur" to books.count { it.optString("status")=="Oxunur" }.toString(),
-            "Bitirilmiş kitabların səhifələri" to completedBooks.sumOf {it.optInt("pages",0)}.toString()).forEach { (label,value) ->
+            "Bitirilmiş kitabların səhifələri" to completedBooks.sumOf {it.optInt("pages",0)}.toString(),
+            "Oxuma müddəti (dəqiqə)" to (books.sumOf {it.optLong("readingMs",0L)}/60000L).toString()).forEach { (label,value) ->
             val card=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(14),dp(16),dp(14));setBackgroundColor(panel()) }
             card.addView(TextView(this).apply {text=label;textSize=13f;setTextColor(fg())})
             card.addView(TextView(this).apply {text=value;textSize=28f;setTextColor(teal);setTypeface(null,1)})
             content.addView(card,LinearLayout.LayoutParams(-1,-2).apply {bottomMargin=dp(10)})
         }
+        val goal=settings.getInt("annualGoal",24)
+        val currentYear=java.text.SimpleDateFormat("yyyy",java.util.Locale.US).format(java.util.Date())
+        val yearDone=completedBooks.count {it.optString("completedAt").startsWith(currentYear)}
+        content.addView(TextView(this).apply {
+            text="İllik hədəf: "+yearDone+" / "+goal+" kitab"
+            textSize=18f;setTextColor(fg());setPadding(0,dp(10),0,dp(10))
+        })
+        content.addView(ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {max=goal;progress=yearDone.coerceAtMost(goal)})
         content.addView(TextView(this).apply {text="Aylıq bitirilən kitablar";textSize=20f;setTextColor(fg());setPadding(0,dp(18),0,dp(12))})
         val months=completedBooks.filter {it.optString("completedAt").length>=7}
             .groupBy {it.optString("completedAt").substring(0,7)}.toSortedMap()
@@ -384,6 +404,13 @@ class MainActivity : Activity() {
     private fun openBook(b:JSONObject) {
         try {
             current=b; page=b.optInt("page",0)
+            readingSince=android.os.SystemClock.elapsedRealtime()
+            if(b.optString("startedAt").isEmpty()) b.put("startedAt",
+                java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.US).format(java.util.Date()))
+            b.put("lastOpenedAt",java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss",java.util.Locale.US).format(java.util.Date()))
+            val history=b.optJSONArray("readingHistory") ?: JSONArray()
+            history.put(JSONObject().put("date",b.optString("lastOpenedAt")).put("page",page))
+            b.put("readingHistory",history)
             when(b.getString("type")) {
                 "pdf" -> {
                     pdfDescriptor=ParcelFileDescriptor.open(File(filesDir,b.getString("path")),ParcelFileDescriptor.MODE_READ_ONLY)
@@ -551,6 +578,7 @@ class MainActivity : Activity() {
     }
     private fun closeReader() {
         if(current==null)return
+        accountReadingTime()
         flushPosition()
         setFullScreen(false)
         headerView=null;footerView=null
@@ -562,7 +590,14 @@ class MainActivity : Activity() {
         zip?.close(); zip = null
         current = null
     }
-    override fun onPause() { if (current != null) flushPosition(); super.onPause() }
+    override fun onPause() {
+        if(current!=null) { accountReadingTime();flushPosition() }
+        super.onPause()
+    }
+    override fun onResume() {
+        super.onResume()
+        if(current!=null && readingSince==0L)readingSince=android.os.SystemClock.elapsedRealtime()
+    }
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() { if(current!=null) { closeReader(); shelf() } else super.onBackPressed() }
     private fun extractEpub(source:File,id:String): List<File> {
