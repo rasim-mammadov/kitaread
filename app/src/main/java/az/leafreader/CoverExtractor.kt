@@ -35,8 +35,7 @@ object CoverExtractor {
                 "cbz","epub" -> {
                     ZipFile(bookFile).use { archive ->
                         val candidates=archive.entries().asSequence().filter { entry ->
-                            !entry.isDirectory && entry.name.substringAfterLast('.').lowercase()
-                                in listOf("jpg","jpeg","png","webp")
+                            !entry.isDirectory && (entry.name.substringAfterLast('.').lowercase() in listOf("jpg","jpeg","png","webp"))
                         }.toList()
                         val selected=if(type=="epub")
                             candidates.firstOrNull {it.name.contains("cover",ignoreCase=true)}
