@@ -309,21 +309,14 @@ class MainActivity : Activity() {
                         ?: throw IOException("Şəkil oxunmadı")
                 }
                 readerBitmap = bitmap
-                val scroll = ScrollView(this).apply {
-                    isFillViewport = true; isVerticalScrollBarEnabled = true
-                }
-                val image = ImageView(this).apply {
-                    setImageBitmap(bitmap); adjustViewBounds = true; scaleType = ImageView.ScaleType.FIT_CENTER
-                }
-                scroll.addView(image, ViewGroup.LayoutParams(-1, -2))
-                activeReaderView = scroll
-                readerContainer?.addView(scroll, FrameLayout.LayoutParams(-1, -1))
-                scroll.viewTreeObserver.addOnScrollChangedListener {
-                    if (activeReaderView === scroll) {
-                        recordPosition(scrollFraction(scroll, (scroll.getChildAt(0)?.height ?: 0) - scroll.height))
-                    }
-                }
-                restoreFraction(scroll, { (scroll.getChildAt(0)?.height ?: 0) - scroll.height }, fraction)
+                val viewer = ZoomPageView(this,
+                    onNext={navigate(1)},onPrevious={navigate(-1)},
+                    onToggleControls={toggleBars()},
+                    onZoomChanged={ value -> book.put("zoom",value.toDouble());save() })
+                activeReaderView = viewer
+                readerContainer?.addView(viewer,FrameLayout.LayoutParams(-1,-1))
+                viewer.setPage(bitmap,book.optDouble("zoom",1.0).toFloat(),settings.getBoolean("fitWidth",false))
+                restoringPosition = false
             }
         }
         book.put("page", page)
