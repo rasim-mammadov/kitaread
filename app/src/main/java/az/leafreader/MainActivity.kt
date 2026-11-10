@@ -108,7 +108,7 @@ class MainActivity : Activity() {
         prefs.edit().putString("items", arr.toString()).apply()
     }
     private fun bar(title: String, back: Boolean = false) {
-        root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.rgb(248,249,247)) }
+        root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(bg()) }
         setContentView(root)
         val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(18,20,18,20); setBackgroundColor(teal) }
         if(back) head.addView(action("‹") { closeReader(); shelf() })
@@ -122,44 +122,171 @@ class MainActivity : Activity() {
     private fun action(s: String, onClick: () -> Unit): TextView = TextView(this).apply {
         text=s; textSize=17f; setTextColor(teal); setPadding(14,12,14,12); setOnClickListener { onClick() }
     }
-    private fun shelf() {
-        closeReader(); setFullScreen(false); bar("Leaf Reader")
-        val tools = LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL }
-        tools.addView(action("＋ Fayl əlavə et") {
-            val i=Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE); type="*/*"
-                putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/pdf","application/epub+zip","application/zip","application/x-cbz","application/octet-stream"))
+    private fun isDark(): Boolean = settings.getString("theme","Light") in listOf("Dark","AMOLED")
+    private fun bg():Int = when(settings.getString("theme","Light")) {
+        "Dark" -> Color.rgb(24,28,35)
+        "AMOLED" -> Color.BLACK
+        "Sepia" -> Color.rgb(242,231,210)
+        else -> Color.rgb(248,250,249)
+    }
+    private fun fg():Int = if(isDark()) Color.WHITE else Color.rgb(32,49,49)
+    private fun panel():Int = if(isDark()) Color.rgb(42,48,56) else Color.WHITE
+    private fun dp(value:Int) = (value*resources.displayMetrics.density).toInt()
+    private fun addNav(active:String) {
+        val nav=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER;setPadding(dp(6),dp(5),dp(6),dp(5));setBackgroundColor(panel()) }
+        val entries=listOf("Kitabxana","Statistika","Ayarlar")
+        entries.forEach { label ->
+            val item=TextView(this).apply {
+                text=if(active==label)"● "+label else label
+                textSize=13f;gravity=Gravity.CENTER;setTextColor(if(active==label)teal else fg())
+                setPadding(dp(4),dp(12),dp(4),dp(12))
+                setOnClickListener { when(label) {
+                    "Kitabxana" -> shelf()
+                    "Statistika" -> statistics()
+                    else -> settingsScreen()
+                }}
             }
-            startActivityForResult(i,42)
-        })
-        root.addView(tools)
-        val scroll=ScrollView(this)
-        val list=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(16,4,16,20) }
-        scroll.addView(list); root.addView(scroll)
-        if(books.isEmpty()) list.addView(TextView(this).apply {
-            text="Hələ kitab yoxdur. EPUB, PDF və ya CBZ faylı əlavə et."; textSize=17f; setPadding(10,36,10,20)
-        })
-        for(b in books.reversed()) {
-            val status=b.optString("status","Oxunmayıb"); val progress=b.optInt("progress",0)
-            val card=LinearLayout(this).apply {
-                orientation=LinearLayout.VERTICAL; setPadding(18,14,18,14); setBackgroundColor(Color.WHITE)
-            }
-            val row=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL }
-            val name=TextView(this).apply {
-                text="${if(b.optString("type")=="pdf") "📄" else if(b.optString("type")=="cbz") "🗯️" else "📖"}  ${b.optString("title")}"
-                textSize=17f; setTextColor(Color.DKGRAY); setTypeface(null,1)
-                layoutParams=LinearLayout.LayoutParams(0,-2,1f)
-            }
-            row.addView(name); row.addView(action("⋮") { options(b) }); card.addView(row)
-            card.addView(TextView(this).apply {
-                text="$status • $progress%" + if(b.optString("completedAt").isNotEmpty()) " • ✓ "+b.optString("completedAt") else ""; setTextColor(teal); textSize=14f; setPadding(4,8,0,8)
-            })
-            card.addView(ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
-                max=100; this.progress=progress
-            })
-            card.setOnClickListener { openBook(b) }
-            list.addView(card, LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=12 })
+            nav.addView(item,LinearLayout.LayoutParams(0,-2,1f))
         }
+        root.addView(nav)
+    }
+    private fun shelf() {
+        closeReader()
+        setFullScreen(false)
+        bar("Leaf Reader")
+        val addButton=action("＋ Kitab əlavə et") {
+            val intent=Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE);type="*/*"
+                putExtra(Intent.EXTRA_MIME_TYPES,arrayOf("application/pdf","application/epub+zip","application/zip","application/x-cbz","application/octet-stream"))
+            }
+            startActivityForResult(intent,42)
+        }
+        root.addView(addButton)
+        val search=EditText(this).apply {
+            hint="Kitab axtar..."
+            textSize=15f;setSingleLine(true);setTextColor(fg())
+            setHintTextColor(Color.GRAY);setBackgroundColor(panel())
+            setPadding(dp(14),dp(10),dp(14),dp(10))
+        }
+        root.addView(search,LinearLayout.LayoutParams(-1,-2).apply { setMargins(dp(12),0,dp(12),dp(8)) })
+        val filters=Spinner(this)
+        val opts=listOf("Hamısı","Oxunur","Oxunmayıb","Bitirilib","Yarımçıq saxlanılıb")
+        filters.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,opts)
+        root.addView(filters)
+        val scroll=ScrollView(this)
+        val list=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(dp(12),dp(8),dp(12),dp(20)) }
+        scroll.addView(list)
+        root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
+        fun render() {
+            list.removeAllViews()
+            val filter=opts[filters.selectedItemPosition.coerceAtLeast(0)]
+            val visible=books.asReversed().filter {
+                it.optString("title").contains(search.text.toString(),ignoreCase=true) &&
+                    (filter=="Hamısı" || it.optString("status","Oxunmayıb")==filter)
+            }
+            if(visible.isEmpty()) list.addView(TextView(this).apply {
+                text="Uyğun kitab tapılmadı";textSize=17f;setTextColor(fg());setPadding(dp(8),dp(28),dp(8),dp(28))
+            })
+            visible.forEach { b ->
+                val card=LinearLayout(this).apply {
+                    orientation=LinearLayout.HORIZONTAL;setPadding(dp(12),dp(12),dp(12),dp(12))
+                    setBackgroundColor(panel());elevation=dp(2).toFloat()
+                }
+                val cover=TextView(this).apply {
+                    text="▤";textSize=42f;gravity=Gravity.CENTER
+                    setTextColor(Color.WHITE);setBackgroundColor(teal)
+                }
+                card.addView(cover,LinearLayout.LayoutParams(dp(68),dp(94)))
+                val detail=LinearLayout(this).apply {
+                    orientation=LinearLayout.VERTICAL;setPadding(dp(14),0,dp(4),0)
+                }
+                val title=TextView(this).apply {
+                    text=b.optString("title");textSize=16f;setTypeface(null,1)
+                    setTextColor(fg());maxLines=2
+                }
+                detail.addView(title)
+                detail.addView(TextView(this).apply {
+                    val date=b.optString("completedAt")
+                    text=b.optString("status","Oxunmayıb") + " · " + b.optInt("progress",0).toString() + "%" +
+                        if(date.isNotBlank()) " · ✓ "+date else ""
+                    textSize=12f;setTextColor(teal);setPadding(0,dp(6),0,dp(8))
+                })
+                detail.addView(ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
+                    max=100;progress=b.optInt("progress",0)
+                })
+                card.addView(detail,LinearLayout.LayoutParams(0,-2,1f))
+                card.addView(action("⋮") { options(b) })
+                card.setOnClickListener { openBook(b) }
+                list.addView(card,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=dp(12) })
+            }
+        }
+        search.addTextChangedListener(object:android.text.TextWatcher {
+            override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
+            override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){render()}
+            override fun afterTextChanged(s:android.text.Editable?){}
+        })
+        filters.onItemSelectedListener=object:android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent:android.widget.AdapterView<*>?){}
+            override fun onItemSelected(parent:android.widget.AdapterView<*>?,view:View?,position:Int,id:Long){render()}
+        }
+        render()
+        addNav("Kitabxana")
+    }
+    private fun statistics() {
+        closeReader();setFullScreen(false);bar("Statistika")
+        val completedBooks=books.filter { it.optString("status")=="Bitirilib" }
+        val scroll=ScrollView(this)
+        val content=LinearLayout(this).apply {
+            orientation=LinearLayout.VERTICAL;setPadding(dp(20),dp(14),dp(20),dp(20))
+        }
+        scroll.addView(content);root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
+        listOf("Ümumi kitab sayı" to books.size.toString(),
+            "Bitirilmiş kitablar" to completedBooks.size.toString(),
+            "Hazırda oxunur" to books.count { it.optString("status")=="Oxunur" }.toString(),
+            "Bitirilmiş kitabların səhifələri" to completedBooks.sumOf {it.optInt("pages",0)}.toString()).forEach { (label,value) ->
+            val card=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(14),dp(16),dp(14));setBackgroundColor(panel()) }
+            card.addView(TextView(this).apply {text=label;textSize=13f;setTextColor(fg())})
+            card.addView(TextView(this).apply {text=value;textSize=28f;setTextColor(teal);setTypeface(null,1)})
+            content.addView(card,LinearLayout.LayoutParams(-1,-2).apply {bottomMargin=dp(10)})
+        }
+        content.addView(TextView(this).apply {text="Aylıq bitirilən kitablar";textSize=20f;setTextColor(fg());setPadding(0,dp(18),0,dp(12))})
+        val months=completedBooks.filter {it.optString("completedAt").length>=7}
+            .groupBy {it.optString("completedAt").substring(0,7)}.toSortedMap()
+        if(months.isEmpty())content.addView(TextView(this).apply {text="Hələ tarixçə yoxdur";setTextColor(fg())})
+        months.forEach { (month,entries) ->
+            content.addView(TextView(this).apply {text=month+"  ·  "+entries.size+" kitab";textSize=16f;setTextColor(fg());setPadding(0,dp(8),0,dp(5))})
+            content.addView(ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {max=books.size.coerceAtLeast(1);progress=entries.size})
+        }
+        addNav("Statistika")
+    }
+    private fun settingsScreen() {
+        closeReader();setFullScreen(false);bar("Ayarlar")
+        val content=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;setPadding(dp(18),dp(20),dp(18),dp(20))}
+        root.addView(content,LinearLayout.LayoutParams(-1,0,1f))
+        content.addView(TextView(this).apply {text="Oxu teması";textSize=19f;setTextColor(fg())})
+        val themes=listOf("Light","Dark","Sepia","AMOLED")
+        val spinner=Spinner(this).apply {adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,themes);setSelection(themes.indexOf(settings.getString("theme","Light")))}
+        content.addView(spinner)
+        content.addView(action("Temanı tətbiq et") {settings.edit().putString("theme",themes[spinner.selectedItemPosition]).apply();settingsScreen()})
+        content.addView(CheckBox(this).apply {
+            text="PDF/CBZ: Fit to Width";setTextColor(fg())
+            isChecked=settings.getBoolean("fitWidth",false)
+            setOnCheckedChangeListener {_,value->settings.edit().putBoolean("fitWidth",value).apply()}
+        })
+        content.addView(action("JSON məlumatları export et") {jsonExport()})
+        content.addView(action("JSON məlumatları import et") {jsonImport()})
+        addNav("Ayarlar")
+    }
+    private fun jsonExport() {
+        startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE);type="application/json"
+            putExtra(Intent.EXTRA_TITLE,"leaf-reader-backup.json")
+        },81)
+    }
+    private fun jsonImport() {
+        startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE);type="application/json"
+        },82)
     }
     private fun options(b: JSONObject) {
         val choices=arrayOf("Oxunmayıb","Oxunur","Bitirilib","Yarımçıq saxlanılıb","Sil")
