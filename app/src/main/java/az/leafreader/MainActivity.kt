@@ -289,7 +289,7 @@ class MainActivity : Activity() {
                 val image = ImageView(this).apply {
                     setImageBitmap(bitmap); adjustViewBounds = true; scaleType = ImageView.ScaleType.FIT_CENTER
                 }
-                scroll.addView(image, ScrollView.LayoutParams(-1, -2))
+                scroll.addView(image, ViewGroup.LayoutParams(-1, -2))
                 activeReaderView = scroll
                 readerContainer?.addView(scroll, FrameLayout.LayoutParams(-1, -1))
                 scroll.viewTreeObserver.addOnScrollChangedListener {
