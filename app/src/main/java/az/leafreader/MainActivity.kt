@@ -37,6 +37,27 @@ class MainActivity : Activity() {
     private var pendingSave: Runnable? = null
     private var restoringPosition = false
     private var activeReaderView: View? = null
+    private var headerView: View? = null
+    private var footerView: View? = null
+    private var readerBarsVisible = true
+    private val settings by lazy { getSharedPreferences("reader_settings", MODE_PRIVATE) }
+    private fun setFullScreen(enabled: Boolean) {
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility = if(enabled)
+            (View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_STABLE)
+            else 0
+    }
+    private fun toggleBars() {
+        readerBarsVisible = !readerBarsVisible
+        headerView?.visibility = if(readerBarsVisible) View.VISIBLE else View.GONE
+        footerView?.visibility = if(readerBarsVisible) View.VISIBLE else View.GONE
+    }
+    private fun markFinished(book: JSONObject) {
+        book.put("status", "Bitirilib")
+        book.put("progress", 100)
+        if(book.optString("completedAt").isEmpty()) book.put("completedAt",
+            java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.US).format(java.util.Date()))
+    }
     private fun scrollFraction(view: View, maxScroll: Int): Double =
         if (maxScroll <= 0) 1.0 else (view.scrollY.toDouble() / maxScroll).coerceIn(0.0, 1.0)
 
@@ -96,12 +117,13 @@ class MainActivity : Activity() {
             layoutParams = LinearLayout.LayoutParams(0,-2,1f)
         })
         root.addView(head)
+        headerView=head
     }
     private fun action(s: String, onClick: () -> Unit): TextView = TextView(this).apply {
         text=s; textSize=17f; setTextColor(teal); setPadding(14,12,14,12); setOnClickListener { onClick() }
     }
     private fun shelf() {
-        closeReader(); bar("📚 Leaf Reader")
+        closeReader(); setFullScreen(false); bar("Leaf Reader")
         val tools = LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL }
         tools.addView(action("＋ Fayl əlavə et") {
             val i=Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -130,7 +152,7 @@ class MainActivity : Activity() {
             }
             row.addView(name); row.addView(action("⋮") { options(b) }); card.addView(row)
             card.addView(TextView(this).apply {
-                text="$status • $progress%"; setTextColor(teal); textSize=14f; setPadding(4,8,0,8)
+                text="$status • $progress%" + if(b.optString("completedAt").isNotEmpty()) " • ✓ "+b.optString("completedAt") else ""; setTextColor(teal); textSize=14f; setPadding(4,8,0,8)
             })
             card.addView(ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
                 max=100; this.progress=progress
@@ -140,13 +162,13 @@ class MainActivity : Activity() {
         }
     }
     private fun options(b: JSONObject) {
-        val choices=arrayOf("Oxunmayıb","Oxunur","Bitirilib","Sil")
+        val choices=arrayOf("Oxunmayıb","Oxunur","Bitirilib","Yarımçıq saxlanılıb","Sil")
         AlertDialog.Builder(this).setTitle(b.optString("title")).setItems(choices) { _,n ->
-            if(n==3) AlertDialog.Builder(this).setMessage("Kitab və oxu qeydi silinsin?")
+            if(n==4) AlertDialog.Builder(this).setMessage("Kitab və oxu qeydi silinsin?")
                 .setPositiveButton("Sil") { _,_ ->
                     File(filesDir,b.getString("path")).delete(); books.remove(b); save(); shelf()
                 }.setNegativeButton("Ləğv et",null).show()
-            else { b.put("status",choices[n]); if(n==2) b.put("progress",100); save(); shelf() }
+            else { if(n==2)markFinished(b) else b.put("status",choices[n]);save();shelf() }
         }.show()
     }
     override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
@@ -195,8 +217,10 @@ class MainActivity : Activity() {
             }
             if(total==0) throw IllegalArgumentException("Oxuna bilən səhifə yoxdur")
             page=page.coerceIn(0,total-1)
-            b.put("status",if(b.optString("status")=="Bitirilib") "Bitirilib" else "Oxunur")
+            b.put("pages",total)
+            if(b.optString("status")!="Bitirilib")b.put("status","Oxunur")
             bar(b.getString("title"),true)
+            setFullScreen(true)
             readerContainer=FrameLayout(this); root.addView(readerContainer,LinearLayout.LayoutParams(-1,0,1f))
             val foot=LinearLayout(this).apply {
                 orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; setPadding(8,4,8,8)
@@ -208,7 +232,10 @@ class MainActivity : Activity() {
             }
             foot.addView(controls)
             foot.addView(action("▶") { navigate(1) }); root.addView(foot)
+            footerView=foot
+            readerBarsVisible=true
             drawPage()
+            toggleBars()
         } catch(e:Exception) {
             Toast.makeText(this,"Açılmadı: ${e.message}",Toast.LENGTH_LONG).show(); closeReader(); shelf()
         }
@@ -222,8 +249,7 @@ class MainActivity : Activity() {
             current?.put("scrollFraction", if (delta < 0) 1.0 else 0.0)
             drawPage()
         } else if (delta > 0 && page == total - 1) {
-            current?.put("status", "Bitirilib")
-            current?.put("progress", 100)
+            current?.let { markFinished(it) }
             flushPosition()
             controls?.text = "${page + 1} / $total   •   100%"
             Toast.makeText(this, "Bitirildi ✓", Toast.LENGTH_SHORT).show()
@@ -304,7 +330,10 @@ class MainActivity : Activity() {
         controls?.text = "${page + 1} / $total   •   ${book.optInt("progress", 0)}%"
     }
     private fun closeReader() {
+        if(current==null)return
         flushPosition()
+        setFullScreen(false)
+        headerView=null;footerView=null
         activeReaderView = null
         web?.destroy(); web = null
         readerBitmap?.recycle(); readerBitmap = null
