@@ -296,6 +296,18 @@ class MainActivity : Activity() {
         val spinner=Spinner(this).apply {adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,themes);setSelection(themes.indexOf(settings.getString("theme","Light")))}
         content.addView(spinner)
         content.addView(action("Temanı tətbiq et") {settings.edit().putString("theme",themes[spinner.selectedItemPosition]).apply();settingsScreen()})
+        content.addView(TextView(this).apply {text="EPUB şrift ölçüsü";textSize=18f;setTextColor(fg());setPadding(0,dp(14),0,dp(8))})
+        val fontSlider=SeekBar(this).apply {
+            max=18;progress=(settings.getInt("fontSize",18)-14).coerceIn(0,18)
+            setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(bar:SeekBar?,progress:Int,fromUser:Boolean) {
+                    if(fromUser)settings.edit().putInt("fontSize",progress+14).apply()
+                }
+                override fun onStartTrackingTouch(bar:SeekBar?) {}
+                override fun onStopTrackingTouch(bar:SeekBar?) {}
+            })
+        }
+        content.addView(fontSlider)
         content.addView(CheckBox(this).apply {
             text="PDF/CBZ: Fit to Width";setTextColor(fg())
             isChecked=settings.getBoolean("fitWidth",false)
@@ -332,15 +344,26 @@ class MainActivity : Activity() {
         },82)
     }
     private fun options(b: JSONObject) {
-        val choices=arrayOf("Oxunmayıb","Oxunur","Bitirilib","Yarımçıq saxlanılıb","Şəxsi qeyd","Sil")
+        val choices=arrayOf("Oxunmayıb","Oxunur","Bitirilib","Yarımçıq saxlanılıb","Şəxsi qeyd","Oxuma tarixçəsi","Sil")
         AlertDialog.Builder(this).setTitle(b.optString("title")).setItems(choices) { _,n ->
-            if(n==5) AlertDialog.Builder(this).setMessage("Kitab və oxu qeydi silinsin?")
+            if(n==6) AlertDialog.Builder(this).setMessage("Kitab və oxu qeydi silinsin?")
                 .setPositiveButton("Sil") { _,_ ->
                     File(filesDir,b.getString("path")).delete(); books.remove(b); save(); shelf()
                 }.setNegativeButton("Ləğv et",null).show()
             else if(n==4)editNote(b)
+            else if(n==5)showHistory(b)
             else { if(n==2)markFinished(b) else b.put("status",choices[n]);save();shelf() }
         }.show()
+    }
+    private fun showHistory(book:JSONObject) {
+        val history=book.optJSONArray("readingHistory") ?: JSONArray()
+        val items=(0 until history.length()).map { index ->
+            val entry=history.optJSONObject(index)
+            (entry?.optString("date") ?: "")+"  ·  səhifə "+((entry?.optInt("page") ?: 0)+1)
+        }.takeLast(30).reversed().toTypedArray()
+        AlertDialog.Builder(this).setTitle("Oxuma tarixçəsi")
+            .setItems(if(items.isEmpty())arrayOf("Hələ tarixçə yoxdur") else items) {_,_->}
+            .setPositiveButton("Bağla",null).show()
     }
     private fun editNote(book:JSONObject) {
         val editor=EditText(this).apply {
@@ -554,8 +577,19 @@ class MainActivity : Activity() {
                     }
                     false
                 }
+                val theme=settings.getString("theme","Light") ?: "Light"
+                val background=when(theme) {"Dark"->"#171B22";"AMOLED"->"#000000";"Sepia"->"#F2E6CF";else->"#FFFFFF"}
+                val foreground=if(theme in listOf("Dark","AMOLED"))"#F5F5F5" else "#292F30"
+                val fontSize=settings.getInt("fontSize",18)
+                val css="<style>body{background:"+background+" !important;color:"+foreground+
+                    " !important;font-size:"+fontSize+"px !important;line-height:1.6 !important;"+
+                    "margin:0 !important;padding:18px !important;box-sizing:border-box}"+
+                    "img,svg{max-width:100% !important;height:auto !important}</style>"
+                val original=file.readText(Charsets.UTF_8)
+                val decorated=original.replace("</head>",css+"</head>",ignoreCase=true)
+                w.setBackgroundColor(android.graphics.Color.parseColor(background))
                 w.loadDataWithBaseURL(file.parentFile!!.toURI().toString(),
-                    file.readText(Charsets.UTF_8), "application/xhtml+xml", "UTF-8", null)
+                    decorated,"application/xhtml+xml","UTF-8",null)
             }
             else -> {
                 val bitmap = if (book.optString("type") == "pdf") {
@@ -574,7 +608,8 @@ class MainActivity : Activity() {
                 }
                 readerBitmap = bitmap
                 val viewer = ZoomPageView(this,
-                    onNext={navigate(1)},onPrevious={navigate(-1)},
+                    onNext={navigate(if(book.optString("type")=="cbz" && settings.getBoolean("cbzRtl",false)) -1 else 1)},
+                    onPrevious={navigate(if(book.optString("type")=="cbz" && settings.getBoolean("cbzRtl",false)) 1 else -1)},
                     onToggleControls={toggleBars()},
                     onZoomChanged={ value -> book.put("zoom",value.toDouble());save() })
                 activeReaderView = viewer
