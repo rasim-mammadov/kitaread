@@ -386,11 +386,13 @@ class MainActivity : Activity() {
                 orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; setPadding(8,4,8,8)
             }
             foot.addView(action("◀") { navigate(-1) })
+            foot.addView(action("☆") { bookmark() })
             controls=TextView(this).apply {
                 gravity=Gravity.CENTER; setTextColor(Color.DKGRAY)
                 layoutParams=LinearLayout.LayoutParams(0,-2,1f)
             }
             foot.addView(controls)
+            foot.addView(action("☷") { bookmarkList() })
             foot.addView(action("▶") { navigate(1) }); root.addView(foot)
             footerView=foot
             readerBarsVisible=true
@@ -400,6 +402,27 @@ class MainActivity : Activity() {
             Toast.makeText(this,"Açılmadı: ${e.message}",Toast.LENGTH_LONG).show(); closeReader(); shelf()
         }
     }
+    private fun bookmark() {
+        val b=current ?:return
+        val marks=b.optJSONArray("bookmarks") ?: JSONArray()
+        if((0 until marks.length()).none { marks.optInt(it)==page })marks.put(page)
+        b.put("bookmarks",marks);save()
+        Toast.makeText(this,"Əlfəcin saxlanıldı",Toast.LENGTH_SHORT).show()
+    }
+    private fun bookmarkList() {
+        val marks=current?.optJSONArray("bookmarks") ?: JSONArray()
+        if(marks.length()==0) {
+            Toast.makeText(this,"Əlfəcin yoxdur",Toast.LENGTH_SHORT).show()
+            return
+        }
+        val items=(0 until marks.length()).map {"Səhifə "+(marks.optInt(it)+1)}.toTypedArray()
+        AlertDialog.Builder(this).setTitle("Əlfəcinlər").setItems(items) {_,selected->
+            page=marks.optInt(selected)
+            current?.put("scrollFraction",0.0)
+            drawPage()
+            recordPosition(0.0,true)
+        }.setNegativeButton("Bağla",null).show()
+    }
     private fun navigate(delta:Int) {
         if (current == null) return
         if (page + delta in 0 until total) {
@@ -408,6 +431,7 @@ class MainActivity : Activity() {
             current?.put("page", page)
             current?.put("scrollFraction", if (delta < 0) 1.0 else 0.0)
             drawPage()
+            recordPosition(0.0,true)
         } else if (delta > 0 && page == total - 1) {
             current?.let { markFinished(it) }
             flushPosition()
@@ -449,6 +473,23 @@ class MainActivity : Activity() {
                         }, fraction)
                     }
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
+                }
+                var touchDownX=0f
+                var touchDownY=0f
+                w.setOnTouchListener { _,evt ->
+                    when(evt.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> {touchDownX=evt.x;touchDownY=evt.y}
+                        MotionEvent.ACTION_UP -> {
+                            val dx=evt.x-touchDownX
+                            val dy=evt.y-touchDownY
+                            if(kotlin.math.abs(dx)>dp(90) && kotlin.math.abs(dx)>kotlin.math.abs(dy)*1.4f) {
+                                navigate(if(dx<0)1 else -1)
+                            } else if(kotlin.math.abs(dx)<dp(8) && kotlin.math.abs(dy)<dp(8)) {
+                                toggleBars()
+                            }
+                        }
+                    }
+                    false
                 }
                 w.loadDataWithBaseURL(file.parentFile!!.toURI().toString(),
                     file.readText(Charsets.UTF_8), "application/xhtml+xml", "UTF-8", null)
