@@ -207,7 +207,15 @@ class MainActivity : Activity() {
                     text="▤";textSize=42f;gravity=Gravity.CENTER
                     setTextColor(Color.WHITE);setBackgroundColor(teal)
                 }
-                card.addView(cover,LinearLayout.LayoutParams(dp(68),dp(94)))
+                val coverPath=b.optString("cover")
+                val coverFile=File(filesDir,coverPath)
+                if(coverPath.isNotBlank() && coverFile.exists()) {
+                    val bitmap=BitmapFactory.decodeFile(coverFile.absolutePath)
+                    val coverImage=ImageView(this).apply {
+                        setImageBitmap(bitmap);scaleType=ImageView.ScaleType.CENTER_CROP
+                    }
+                    card.addView(coverImage,LinearLayout.LayoutParams(dp(68),dp(94)))
+                } else card.addView(cover,LinearLayout.LayoutParams(dp(68),dp(94)))
                 val detail=LinearLayout(this).apply {
                     orientation=LinearLayout.VERTICAL;setPadding(dp(14),0,dp(4),0)
                 }
@@ -396,8 +404,10 @@ class MainActivity : Activity() {
             contentResolver.openInputStream(uri)!!.use { input ->
                 FileOutputStream(File(filesDir,id)).use { input.copyTo(it) }
             }
-            books.add(JSONObject().put("title",title).put("path",id).put("type",ext)
-                .put("page",0).put("scrollFraction",0.0).put("progress",0).put("status","Oxunmayıb"))
+            val item=JSONObject().put("title",title).put("path",id).put("type",ext)
+                .put("page",0).put("scrollFraction",0.0).put("progress",0).put("status","Oxunmayıb")
+            CoverExtractor.extract(this,File(filesDir,id),ext,id)?.let {item.put("cover",it)}
+            books.add(item)
             save(); shelf()
         } catch(e:Exception) { Toast.makeText(this,"İdxal xətası: ${e.message}",Toast.LENGTH_LONG).show() }
     }
