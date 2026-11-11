@@ -38,7 +38,7 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                 .padding(horizontal=12.dp,vertical=10.dp),
                 verticalAlignment=Alignment.CenterVertically) {
                 IconButton(onClick=onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack,"Kitabxanaya qayıt")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack,ui("Kitabxanaya qayıt"))
                 }
                 Column(Modifier.padding(start=4.dp)) {
                     Text(ui("Oxu statistikası"),fontSize=23.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface)
