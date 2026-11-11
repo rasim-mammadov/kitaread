@@ -329,7 +329,7 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Text(book.title,fontWeight=FontWeight.SemiBold,fontSize=17.sp,
                     maxLines=2,overflow=TextOverflow.Ellipsis)
-                val metadata=remember(book.path) {store.find(book.path)}
+                val metadata=store.find(book.path)
                 val author=metadata?.optString("author").orEmpty()
                 val genre=metadata?.optString("genre",GenreCatalog.UNKNOWN).orEmpty()
                 if(author.isNotBlank()) Text(author,color=Gray,fontSize=12.sp,
