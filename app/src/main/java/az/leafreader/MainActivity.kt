@@ -41,6 +41,10 @@ class MainActivity : Activity() {
     private var footerView: View? = null
     private var sideButtons: View? = null
     private var readerBarsVisible = true
+    private var epubPageCount = 1
+    private var epubPageIndex = 0
+    private var epubReady = false
+    private fun pagedEpub() = settings.getString("epubMode", "pages") == "pages"
     private var readingSince = 0L
     private fun accountReadingTime() {
         val book=current ?: return
@@ -72,7 +76,7 @@ class MainActivity : Activity() {
             java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.US).format(java.util.Date()))
     }
     private fun scrollFraction(view: View, maxScroll: Int): Double =
-        if (maxScroll <= 0) 1.0 else (view.scrollY.toDouble() / maxScroll).coerceIn(0.0, 1.0)
+        if (maxScroll <= 0) 0.0 else (view.scrollY.toDouble() / maxScroll).coerceIn(0.0, 1.0)
 
     private fun recordPosition(fraction: Double, immediate: Boolean = false) {
         val book = current ?: return
@@ -84,12 +88,19 @@ class MainActivity : Activity() {
         val progress = if (book.optString("status") == "Bitirilib") 100 else raw.coerceIn(0, 99)
         book.put("progress", progress)
         if (book.optString("status") == "Oxunmayıb") book.put("status", "Oxunur")
-        controls?.text = "${page + 1} / $total   •   $progress%"
+        updateReaderProgress()
         pendingSave?.let { saveHandler.removeCallbacks(it) }
         val task = Runnable { save(); pendingSave = null }
         if (immediate) task.run() else { pendingSave = task; saveHandler.postDelayed(task, 350) }
     }
 
+    private fun updateReaderProgress() {
+        val book=current ?:return
+        val progress=book.optInt("progress",0)
+        controls?.text=if(book.optString("type")=="epub" && pagedEpub())
+            "Fəsil ${page+1}/$total · ${epubPageIndex+1}/$epubPageCount · $progress%"
+            else "${page+1}/$total · $progress%"
+    }
     private fun flushPosition() {
         pendingSave?.let { saveHandler.removeCallbacks(it); pendingSave = null }
         save()
@@ -526,20 +537,50 @@ class MainActivity : Activity() {
     private fun readerTurn(direction:Int) {
         if(current?.optString("type")=="epub") {
             web?.let { view ->
-                val max=(view.contentHeight*view.scale-view.height).toInt().coerceAtLeast(0)
-                val step=(view.height*0.86f).toInt().coerceAtLeast(1)
-                if(direction>0 && view.scrollY<max-8) {
-                    view.scrollTo(0,(view.scrollY+step).coerceAtMost(max))
-                    return
-                }
-                if(direction<0 && view.scrollY>8) {
-                    view.scrollTo(0,(view.scrollY-step).coerceAtLeast(0))
-                    return
+                if(!epubReady)return
+                if(pagedEpub()) {
+                    val max=epubMaxX(view)
+                    val step=view.width.coerceAtLeast(1)
+                    val currentPage=(view.scrollX.toFloat()/step).roundToInt()
+                    if(direction>0 && currentPage<epubPageCount-1) {
+                        val target=((currentPage+1)*step).coerceAtMost(max)
+                        view.scrollTo(target,0)
+                        onEpubScrolled(view)
+                        return
+                    }
+                    if(direction<0 && currentPage>0) {
+                        view.scrollTo(((currentPage-1)*step).coerceAtLeast(0),0)
+                        onEpubScrolled(view)
+                        return
+                    }
+                } else {
+                    val max=(view.contentHeight*view.scale-view.height).toInt().coerceAtLeast(0)
+                    val step=(view.height*0.87f).toInt().coerceAtLeast(1)
+                    if(direction>0 && view.scrollY<max-8) {
+                        view.scrollTo(0,(view.scrollY+step).coerceAtMost(max))
+                        return
+                    }
+                    if(direction<0 && view.scrollY>8) {
+                        view.scrollTo(0,(view.scrollY-step).coerceAtLeast(0))
+                        return
+                    }
                 }
             }
         }
         val rtl=current?.optString("type")=="cbz" && settings.getBoolean("cbzRtl",false)
         navigate(if(rtl)-direction else direction)
+    }
+    private fun epubMaxX(view:WebView):Int =
+        if(view is EpubChapterView) view.maxHorizontalScroll() else 0
+    private fun onEpubScrolled(view:WebView) {
+        if(!pagedEpub())return
+        val step=view.width.coerceAtLeast(1)
+        epubPageCount=(epubMaxX(view)/step)+1
+        epubPageIndex=(view.scrollX.toFloat()/step).roundToInt().coerceIn(0,epubPageCount-1)
+        val fraction=if(epubPageCount<=1)0.0
+            else epubPageIndex.toDouble()/(epubPageCount-1)
+        recordPosition(fraction)
+        updateReaderProgress()
     }
     private fun readerOptions() {
         val book=current ?:return
