@@ -249,10 +249,15 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         }
     }
     val filePicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri->
-        if(uri!=null) try {
-            store.import(uri)
-            books=store.books()
-        }catch(e:Exception){Toast.makeText(context,UiLanguage.translate(e.message ?: "Fayl açılmadı",store.setting().getString("language","az") ?: "az"),Toast.LENGTH_LONG).show()}
+        if(uri!=null)backupScope.launch {
+            try {
+                withContext(Dispatchers.IO){store.import(uri)}
+                refreshLibrary()
+            }catch(e:Exception){
+                Toast.makeText(context,UiLanguage.translate(e.message ?: "Fayl açılmadı",
+                    store.setting().getString("language","az") ?: "az"),Toast.LENGTH_LONG).show()
+            }
+        }
     }
     val jsonExport=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) {uri->
         if(uri!=null)try {
