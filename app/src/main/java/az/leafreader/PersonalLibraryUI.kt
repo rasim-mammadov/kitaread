@@ -43,7 +43,7 @@ fun BookDetailsSheet(book:ReaderBook,store:BookStore,onClose:()->Unit,onChanged:
     }
     var rating by remember(book.path){mutableFloatStateOf(source?.optDouble("rating",0.0)?.toFloat() ?: 0f)}
     var status by remember(book.path){mutableStateOf(source?.optString("status","Oxunmayıb") ?: "Oxunmayıb")}
-    ModalBottomSheet(onDismissRequest=onClose,containerColor=Color(0xFFF8F6F0)) {
+    ModalBottomSheet(onDismissRequest=onClose,containerColor=MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
             .padding(horizontal=24.dp).padding(bottom=24.dp),
             verticalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -72,7 +72,7 @@ fun BookDetailsSheet(book:ReaderBook,store:BookStore,onClose:()->Unit,onChanged:
                 }
             }
             Text("Şəxsi kolleksiyalar",fontWeight=FontWeight.SemiBold)
-            if(collections.isEmpty())Text("Hələ kolleksiya yoxdur",color=Color.Gray,fontSize=13.sp)
+            if(collections.isEmpty())Text("Hələ kolleksiya yoxdur",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=13.sp)
             collections.forEach {label->
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     Text(label,modifier=Modifier.weight(1f))
@@ -104,9 +104,9 @@ fun BookDetailsSheet(book:ReaderBook,store:BookStore,onClose:()->Unit,onChanged:
             Slider(value=rating,onValueChange={rating=it},
                 valueRange=0f..5f,steps=4)
             Text("Format: ${book.type.uppercase()} · Progress: ${book.progress}%",
-                fontSize=13.sp,color=Color.Gray)
+                fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
             if(book.completedAt.isNotBlank())
-                Text("Bitirilmə tarixi: ${book.completedAt}",color=Color.Gray,fontSize=13.sp)
+                Text("Bitirilmə tarixi: ${book.completedAt}",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=13.sp)
             Button(onClick={
                 store.change(book.path){row->
                     row.put("title",title.trim().ifBlank{book.title})
@@ -147,14 +147,14 @@ fun BookmarksSheet(
         books.flatMap {book->store.bookmarks(book.path).map {book to it}}
             .sortedByDescending {it.second.createdAt}
     }
-    ModalBottomSheet(onDismissRequest=onClose,containerColor=Color(0xFFF8F6F0)) {
+    ModalBottomSheet(onDismissRequest=onClose,containerColor=MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxWidth().padding(horizontal=22.dp).padding(bottom=18.dp)) {
             Text("Əlfəcinlərim",fontSize=24.sp,fontWeight=FontWeight.Bold)
-            Text("${marks.size} yadda saxlanmış mövqe",fontSize=13.sp,color=Color.Gray)
+            Text("${marks.size} yadda saxlanmış mövqe",fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(10.dp))
             if(marks.isEmpty()) {
                 Box(Modifier.fillMaxWidth().height(150.dp),contentAlignment=Alignment.Center) {
-                    Text("Hələ əlfəcin əlavə etməmisən",color=Color.Gray)
+                    Text("Hələ əlfəcin əlavə etməmisən",color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }else LazyColumn(contentPadding=PaddingValues(bottom=25.dp)) {
                 items(marks,key={it.first.path+":"+
