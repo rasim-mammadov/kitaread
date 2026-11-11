@@ -364,41 +364,73 @@ class BookStore(private val context: Context) {
                 file.extension.lowercase() in listOf("xhtml","html","htm"))file else null
         }
     }
+    /** Resolve EPUB3 nav/EPUB2 NCX labels against the actual XHTML spine file paths.
+     * The HTML <title> is a document title, often the same book title for each chapter.
+     */
     fun chapterTitles(bookPath:String,chapters:List<File>):List<String> {
         if(chapters.isEmpty())return emptyList()
-        // The nav document can be in the EPUB package root, while chapters live
-        // in a nested Text/ directory. Search only this book's extracted files.
-        val directory=File(context.cacheDir,"epub_v3_"+bookPath.substringBeforeLast('.'))
-        val nav=directory.walkTopDown().filter {it.isFile &&
-            it.name.lowercase() in setOf("nav.xhtml","nav.html","toc.xhtml","toc.html",
-                "contents.xhtml","contents.html")}.firstOrNull()
-        val navLabels=mutableMapOf<String,String>()
-        if(nav!=null)try {
-            val html=nav.readText(Charsets.UTF_8)
-            val anchors=Regex("""<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>(.*?)</a>""",
-                setOf(RegexOption.IGNORE_CASE,RegexOption.DOT_MATCHES_ALL))
-            anchors.findAll(html).forEach { match ->
-                val link=java.net.URLDecoder.decode(match.groupValues[1].substringBefore('#'),"UTF-8")
-                val name=link.substringAfterLast('/').lowercase()
-                val text=match.groupValues[2].replace(Regex("<[^>]*>"),"")
-                    .replace("&amp;","&").replace("&nbsp;"," ")
-                    .replace("&lt;","<").replace("&gt;",">")
-                    .trim().replace(Regex("\\s+")," ")
-                if(name.isNotBlank()&&text.isNotBlank())navLabels.putIfAbsent(name,text)
-            }
-        }catch(_:Exception){}
+        val root=File(context.cacheDir,"epub_v3_"+bookPath.substringBeforeLast('.')).canonicalFile
+        val labels=mutableMapOf<String,String>()
+        val navigation=root.walkTopDown().filter {
+            it.isFile && it.extension.lowercase() in setOf("xhtml","html","htm","ncx") &&
+                it.name.lowercase() in setOf("nav.xhtml","nav.html","toc.xhtml","toc.html",
+                    "contents.xhtml","contents.html","toc.ncx")
+        }.toList()
+
+        // EPUB3 <nav> links: match the referenced file, even if nav and chapters
+        // reside in different subfolders.
+        navigation.filter {it.extension.lowercase()!="ncx"}.forEach {nav->
+            try {
+                val html=nav.readText(Charsets.UTF_8)
+                val anchors=Regex("""<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>(.*?)</a>""",
+                    setOf(RegexOption.IGNORE_CASE,RegexOption.DOT_MATCHES_ALL))
+                anchors.findAll(html).forEach {match->
+                    val href=java.net.URLDecoder.decode(match.groupValues[1].substringBefore('#'),"UTF-8")
+                    val target=File(nav.parentFile,href).canonicalFile
+                    val label=match.groupValues[2].replace(Regex("<[^>]+>"),"")
+                        .replace("&amp;","&").replace("&nbsp;"," ")
+                        .replace("&#39;","'").replace("&quot;","\"")
+                        .trim().replace(Regex("\\s+")," ")
+                    if(target.path.startsWith(root.path+File.separator) && label.isNotBlank())
+                        labels.putIfAbsent(target.path,label.take(100))
+                }
+            }catch(_:Exception){}
+        }
+
+        // EPUB2 NCX normally supplies navLabel + content src separately.
+        navigation.filter {it.extension.lowercase()=="ncx"}.forEach {ncx->
+            try {
+                val source=ncx.readText(Charsets.UTF_8)
+                val points=Regex("""<navPoint\b[^>]*>(.*?)</navPoint>""",
+                    setOf(RegexOption.IGNORE_CASE,RegexOption.DOT_MATCHES_ALL))
+                points.findAll(source).forEach {match->
+                    val block=match.groupValues[1]
+                    val name=Regex("""<text\b[^>]*>(.*?)</text>""",
+                        setOf(RegexOption.IGNORE_CASE,RegexOption.DOT_MATCHES_ALL))
+                        .find(block)?.groupValues?.get(1)?.replace(Regex("<[^>]+>"),"")?.trim()
+                    val link=Regex("""<content\b[^>]*src\s*=\s*["']([^"']+)["']""",
+                        RegexOption.IGNORE_CASE).find(block)?.groupValues?.get(1)
+                    if(!name.isNullOrBlank() && !link.isNullOrBlank()) {
+                        val href=java.net.URLDecoder.decode(link.substringBefore('#'),"UTF-8")
+                        val target=File(ncx.parentFile,href).canonicalFile
+                        if(target.path.startsWith(root.path+File.separator))
+                            labels.putIfAbsent(target.path,name.take(100))
+                    }
+                }
+            }catch(_:Exception){}
+        }
+
         return chapters.mapIndexed {i,file->
-            val candidate=navLabels[file.name.lowercase()]
-            if(!candidate.isNullOrBlank())candidate.take(80) else {
+            labels[file.canonicalPath] ?:run {
+                // Prefer an actual visible heading, not the repeated HTML <title>.
                 val heading=try {
-                    val page=file.readText(Charsets.UTF_8).take(20000)
-                    val match=Regex("""<(?:h1|h2|title)\b[^>]*>(.*?)</(?:h1|h2|title)>""",
-                        setOf(RegexOption.IGNORE_CASE,RegexOption.DOT_MATCHES_ALL)).find(page)
-                    match?.groupValues?.getOrNull(1)?.replace(Regex("<[^>]*>"),"")
-                        ?.trim()?.take(80)
+                    val html=file.readText(Charsets.UTF_8).take(30000)
+                    Regex("""<(?:h1|h2|h3)\b[^>]*>(.*?)</(?:h1|h2|h3)>""",
+                        setOf(RegexOption.IGNORE_CASE,RegexOption.DOT_MATCHES_ALL))
+                        .find(html)?.groupValues?.get(1)?.replace(Regex("<[^>]+>"),"")
+                        ?.trim()?.replace(Regex("\\s+")," ")?.take(100)
                 }catch(_:Exception){null}
-                heading?.takeIf {it.isNotBlank()} ?:
-                    file.nameWithoutExtension.replace('_',' ').ifBlank {"Fəsil ${i+1}"}
+                heading?.takeIf {it.isNotBlank()} ?: "Fəsil ${i+1}"
             }
         }
     }
