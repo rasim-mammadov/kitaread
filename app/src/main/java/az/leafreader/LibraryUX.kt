@@ -220,7 +220,7 @@ fun AdvancedFiltersSheet(
                 }
             Text(ui("Format"))
             Row(Modifier.horizontalScroll(rememberScrollState())) {
-                listOf("Hamısı","EPUB","PDF","CBZ").forEach {v->
+                listOf("Hamısı","EPUB","PDF","CBZ","MD").forEach {v->
                     FilterChip(selected=format==v,onClick={onFormat(v)},label={Text(ui(v))})
                     Spacer(Modifier.width(4.dp))
                 }
