@@ -6,6 +6,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color as AndroidColor
 import android.os.Bundle
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.view.MotionEvent
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -85,12 +88,18 @@ class MainActivity:ComponentActivity() {
         window.decorView.systemUiVisibility=0
         val store=BookStore(this)
         tracker=ReadingSessionTracker(store)
-        setContent { LeafApp(store,tracker) }
+        @Suppress("DEPRECATION")
+        val shared:Uri?=if(intent?.action==Intent.ACTION_SEND) {
+            if(Build.VERSION.SDK_INT>=33)
+                intent.getParcelableExtra(Intent.EXTRA_STREAM,Uri::class.java)
+            else intent.getParcelableExtra(Intent.EXTRA_STREAM)
+        } else if(intent?.action==Intent.ACTION_VIEW) intent.data else null
+        setContent { LeafApp(store,tracker,shared) }
     }
 }
 
 @Composable
-private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker) {
+private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:Uri?=null) {
     val context=LocalContext.current
     var books by remember {mutableStateOf(store.books())}
     var selected by remember {mutableStateOf<ReaderBook?>(null)}
@@ -111,6 +120,17 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker) {
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {store.enrichLegacyEpub()}
         refreshLibrary()
+    }
+    // Some Android file managers report EPUB as application/zip or application/octet-stream.
+    // Show all files here; BookStore validates the actual book extension before import.
+    LaunchedEffect(incomingBook) {
+        if(incomingBook!=null)try {
+            val imported=withContext(Dispatchers.IO){store.import(incomingBook)}
+            refreshLibrary()
+            selected=store.books().firstOrNull {it.path==imported}
+        }catch(e:Exception) {
+            Toast.makeText(context,e.message ?: "Kitab açıla bilmədi",Toast.LENGTH_LONG).show()
+        }
     }
     val filePicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri->
         if(uri!=null) try {
@@ -148,7 +168,8 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker) {
                 contentWindowInsets=WindowInsets.safeDrawing,
                 containerColor=Cream,
                 topBar={
-                    Column(Modifier.fillMaxWidth().padding(start=22.dp,end=22.dp,top=20.dp,bottom=8.dp)) {
+                    Column(Modifier.fillMaxWidth().statusBarsPadding()
+                        .padding(start=22.dp,end=22.dp,top=12.dp,bottom=8.dp)) {
                         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text("Leaf Reader",fontSize=30.sp,fontWeight=FontWeight.Bold,color=Ink)
@@ -168,7 +189,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker) {
                 },
                 floatingActionButton={
                     ExtendedFloatingActionButton(onClick={
-                        filePicker.launch(arrayOf("application/pdf","application/epub+zip","application/zip","application/octet-stream"))
+                        filePicker.launch(arrayOf("*/*"))
                     },icon={Icon(Icons.Default.Add,null)},text={Text("Kitab əlavə et")})
                 }
             ){ inner->
@@ -604,22 +625,48 @@ private fun ReaderScreen(
                     },modifier=Modifier.fillMaxSize())
                 }
             } else {
-                var bitmap by remember(chapter,book.path) {mutableStateOf<Bitmap?>(null)}
-                LaunchedEffect(chapter,book.path) {
-                    bitmap=try {withContext(Dispatchers.IO) {
-                        ReaderMedia.page(bookFile,book.type,chapter)
-                    }}catch(e:Exception){loadError=e.message;null}
+                // Keep the previous rendered bitmap on screen until the next page is
+                // ready. Do not tear down/recreate the zoom view for each turn.
+                var displayedBitmap by remember(book.path) {
+                    mutableStateOf<Bitmap?>(null)
                 }
-                if(bitmap==null) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
-                    CircularProgressIndicator()
-                } else key(chapter) {
-                    AndroidView(factory={ctx->
-                        ZoomPageView(ctx,onNext={if(swipe)turn(1)},
-                            onPrevious={if(swipe)turn(-1)},
-                            onToggleControls={chrome=!chrome},
-                            onZoomChanged={zoom->prefs.edit().putFloat("zoom",zoom).apply()})
-                            .apply {setPage(bitmap!!,prefs.getFloat("zoom",1f),prefs.getBoolean("fitWidth",false))}
-                    },modifier=Modifier.fillMaxSize())
+                LaunchedEffect(chapter,book.path) {
+                    try {
+                        val next=withContext(Dispatchers.IO) {
+                            ReaderMedia.page(bookFile,book.type,chapter)
+                        }
+                        displayedBitmap=next
+                        loadError=null
+                    }catch(e:Exception) {
+                        loadError=e.message ?: "Səhifə göstərilmədi"
+                    }
+                }
+                if(displayedBitmap==null) {
+                    Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    val currentBitmap=displayedBitmap!!
+                    val nextTurn by rememberUpdatedState<(Int)->Unit>({dir->turn(dir)})
+                    val controls by rememberUpdatedState<()->Unit>({chrome=!chrome})
+                    AndroidView(
+                        factory={ctx->
+                            ZoomPageView(ctx,
+                                onNext={if(swipe)nextTurn(1)},
+                                onPrevious={if(swipe)nextTurn(-1)},
+                                onToggleControls={controls()},
+                                onZoomChanged={zoom->prefs.edit().putFloat("zoom",zoom).apply()})
+                        },
+                        update={view->
+                            if(view.tag !== currentBitmap) {
+                                view.setPage(currentBitmap,
+                                    prefs.getFloat("zoom",1f),
+                                    prefs.getBoolean("fitWidth",false))
+                                view.tag=currentBitmap
+                            }
+                        },
+                        modifier=Modifier.fillMaxSize()
+                    )
                 }
             }
             if(arrows) {
