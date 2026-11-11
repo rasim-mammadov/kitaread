@@ -117,6 +117,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         libraryVersion++
     }
     var showDashboard by remember {mutableStateOf(false)}
+    var showThemeGallery by remember {mutableStateOf(false)}
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {store.enrichLegacyEpub()}
         refreshLibrary()
@@ -203,8 +204,12 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                     Row(Modifier.fillMaxWidth().padding(top=5.dp),
                         horizontalArrangement=Arrangement.spacedBy(8.dp),
                         verticalAlignment=Alignment.CenterVertically) {
-                        Text("Məlumatların ehtiyat nüsxəsi",fontSize=12.sp,color=Gray,
-                            modifier=Modifier.weight(1f))
+                        TextButton(onClick={showThemeGallery=true}) {
+                            Icon(Icons.Default.Palette,null,Modifier.size(17.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Temalar",fontSize=13.sp)
+                        }
+                        Spacer(Modifier.weight(1f))
                         TextButton(onClick={jsonExport.launch("leaf-reader-metadata.json")}) {
                             Text("Export",fontSize=12.sp)
                         }
@@ -284,6 +289,9 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                 openingMark=null
                 refreshLibrary()
             })
+        }
+        if(showThemeGallery) {
+            ThemePickerDialog(store,onDismiss={showThemeGallery=false})
         }
         detailsBook?.let {book->
             BookDetailsSheet(book,store,
@@ -746,7 +754,18 @@ private fun ReaderScreen(
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                 .padding(horizontal=24.dp).padding(bottom=24.dp)) {
                 Text("Oxuma ayarları",fontSize=24.sp,fontWeight=FontWeight.Bold)
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(8.dp))
+                Text("Oxuma teması · 10 hazır seçim",fontWeight=FontWeight.SemiBold)
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    ReadingThemes.presets.forEach {t->
+                        FilterChip(theme==t.name,{
+                            theme=t.name
+                            prefs.edit().putString("theme",t.name).apply()
+                        },label={Text(t.name)})
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
                 if(book.type=="epub") {
                     Text("Şrift ölçüsü  "+font.toInt()+" px",fontWeight=FontWeight.SemiBold)
                     Slider(font,{font=it; prefs.edit().putInt("fontSize",it.toInt()).apply()},valueRange=12f..34f)
@@ -775,16 +794,6 @@ private fun ReaderScreen(
                             label={Text("Səhifələmə")})
                         FilterChip(mode=="scroll",{mode="scroll";prefs.edit().putString("epubMode",mode).apply()},
                             label={Text("Continuous scroll")})
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-                Text("Tema",fontWeight=FontWeight.SemiBold)
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    listOf("Light","Sepia","Dark","AMOLED","Paper","Warm",
-                        "Sage","Ocean","Midnight","Graphite").forEach {t->
-                        FilterChip(theme==t,{theme=t;prefs.edit().putString("theme",t).apply()},
-                            label={Text(t,fontSize=11.sp)})
                     }
                 }
                 HorizontalDivider(Modifier.padding(vertical=12.dp))
