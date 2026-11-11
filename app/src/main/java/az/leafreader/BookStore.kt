@@ -48,6 +48,58 @@ class BookStore(private val context: Context) {
         items.forEach {arr.put(it)}
         prefs.edit().putString("items",arr.toString()).apply()
     }
+    fun hideBook(path:String,hidden:Boolean) {
+        change(path) {it.put("hidden",hidden)}
+    }
+    /**
+     * Remove only the library record by default, without deleting book bytes.
+     * Full deletion requires explicit confirmation in the interface.
+     */
+    fun removeBook(path:String,deleteFiles:Boolean) {
+        val items=records()
+        val target=items.firstOrNull {it.optString("path")==path} ?:return
+        if(deleteFiles) {
+            val root=context.filesDir.canonicalFile
+            listOf(target.optString("path"),target.optString("cover"))
+                .filter {it.isNotBlank()}.forEach {relative->
+                    val file=File(root,relative).canonicalFile
+                    if(file.parentFile==root && file.isFile)file.delete()
+                }
+            val cache=File(context.cacheDir,"epub_v3_"+path.substringBeforeLast('.')).canonicalFile
+            if(cache.parentFile==context.cacheDir.canonicalFile)cache.deleteRecursively()
+        }
+        persist(items.filterNot {it.optString("path")==path})
+    }
+    fun lastReadSortTime(book:JSONObject):Long {
+        val exact=book.optLong("lastReadTimestamp",0L)
+        if(exact>0)return exact
+        val date=book.optString("lastReadAt")
+        return try {
+            java.time.LocalDate.parse(date).atStartOfDay(
+                java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        }catch(_:Exception){0L}
+    }
+    fun sortBooks(values:List<ReaderBook>,kind:String="Son oxunanlar"):List<ReaderBook> {
+        val data=values.associate {it.path to find(it.path)}
+        fun group(b:ReaderBook):Int=when(b.status) {
+            "Oxunur"->0
+            "Oxunmayıb"->1
+            "Yarımçıq saxlanılıb"->2
+            "Bitirilib"->3
+            else->2
+        }
+        return when(kind) {
+            "A–Z"->values.sortedWith(compareBy<ReaderBook> {group(it)}.thenBy {it.title.lowercase()})
+            "Z–A"->values.sortedWith(compareBy<ReaderBook> {group(it)}.thenByDescending {it.title.lowercase()})
+            "Progress"->values.sortedWith(compareBy<ReaderBook> {group(it)}.thenByDescending {it.progress})
+            "Əlavə edilmə tarixi"->values.sortedWith(compareBy<ReaderBook> {group(it)}
+                .thenByDescending {data[it.path]?.optLong("addedAt",0L) ?:0L})
+            else->values.sortedWith(compareBy<ReaderBook> {group(it)}
+                .thenByDescending {lastReadSortTime(data[it.path] ?:JSONObject())}
+                .thenByDescending {data[it.path]?.optLong("addedAt",0L) ?:0L})
+        }
+    }
+
     data class RestoreResult(val imported:Int,val existing:Int,val missingFiles:Int)
 
     /** Metadata only: book files are NOT included in this JSON. */
@@ -289,7 +341,8 @@ class BookStore(private val context: Context) {
             FileOutputStream(file).use {input.copyTo(it)}
         }
         val meta=if(extension=="epub")epubMetadata(file) else Triple("","",emptyList())
-        val item=JSONObject().put("title",meta.first.ifBlank {title.substringBeforeLast('.')})
+        val item=JSONObject().put("addedAt",System.currentTimeMillis())
+            .put("title",meta.first.ifBlank {title.substringBeforeLast('.')})
             .put("author",meta.second)
             .put("genre",GenreCatalog.fromSubjects(meta.third))
             .put("subjects",JSONArray(meta.third))
