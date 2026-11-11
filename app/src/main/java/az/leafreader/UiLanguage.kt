@@ -283,6 +283,13 @@ object UiLanguage {
         "Tam ehtiyat nüsxə kitab fayllarını və bütün qeydləri saxlayır." to Pair("Полная копия включает файлы книг и все заметки.","Full backup includes book files and all notes."),
         "Tam backup saxlanıldı" to Pair("Полная копия сохранена","Full backup saved"),
         "Tam bərpa tamamlandı" to Pair("Полное восстановление завершено","Full restore completed"),
+        "Dəqiqə sayını daxil et" to Pair("Введите количество минут","Enter minutes"),
+        "Kitab sayını daxil et" to Pair("Введите количество книг","Enter number of books"),
+        "Azalt" to Pair("Уменьшить","Decrease"),
+        "Artır" to Pair("Увеличить","Increase"),
+        "nailiyyət" to Pair("достижений","achievements"),
+        "Pasportu şəkil kimi paylaş" to Pair("Поделиться паспортом как изображением","Share passport as image"),
+        "Paylaşma xətası" to Pair("Ошибка публикации","Sharing failed"),
         "Oxu gündəliyi" to Pair("Дневник чтения","Reading journal"),
         "Gündəlik" to Pair("Дневник","Journal"),
         "Sitatlar və qeydlər" to Pair("Цитаты и заметки","Quotes & notes"),
@@ -334,9 +341,9 @@ object UiLanguage {
         "Seriya" to Pair("Серия","Series"),
         "Ağıllı axtarış" to Pair("Умный поиск","Smart search"),
         "Kitab, müəllif, seriya, janr, kolleksiya axtar..." to Pair("Поиск книги, автора, серии, жанра, коллекции...","Search title, author, series, genre, collection..."),
-        "4.0 Release Candidate · Offline EPUB / PDF / CBZ / Markdown" to Pair(
-            "Версия 4.0 RC · Без интернета · EPUB / PDF / CBZ / Markdown",
-            "4.0 Release Candidate · Offline EPUB / PDF / CBZ / Markdown")
+        "4.0 RC2 · Offline EPUB / PDF / CBZ / Markdown" to Pair(
+            "Версия 4.0 RC2 · Без интернета · EPUB / PDF / CBZ / Markdown",
+            "4.0 RC2 · Offline EPUB / PDF / CBZ / Markdown")
     )
     fun translate(text:String,language:String):String {
         if(language=="az")return when(text) {
@@ -355,8 +362,8 @@ object UiLanguage {
             "Reader Theme tətbiq temasını izləsin"->"Oxuyucu tətbiqin temasını izləsin"
             "Qlobal Reader Theme seçimi Appearance bölməsindədir."->
                 "Oxuyucunun ümumi temasını Görünüş bölməsindən seç."
-            "4.0 Release Candidate · Offline EPUB / PDF / CBZ / Markdown"->
-                "4.0 Namizəd versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
+            "4.0 RC2 · Offline EPUB / PDF / CBZ / Markdown"->
+                "4.0 RC2 namizəd versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
             "3.5 Preview · Offline EPUB / PDF / CBZ / Markdown"->
                 "3.5 İlkin versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
             "3.3.3 Preview · Offline EPUB / PDF / CBZ"->
