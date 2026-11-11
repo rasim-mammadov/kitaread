@@ -253,16 +253,16 @@ object UiLanguage {
                 } ?: segment
             }
         }
-        val countBookmark=Regex("""^(\\d+) yadda saxlanmış mövqe$""").matchEntire(text)
+        val countBookmark=Regex("""^(\d+) yadda saxlanmış mövqe$""").matchEntire(text)
         if(countBookmark!=null)return countBookmark.groupValues[1]+
             if(language=="ru")" сохранённых закладок" else " saved bookmarks"
-        val completed=Regex("""^(\\d+) kitab bitirilib · (\\d+) aktiv oxu günü$""").matchEntire(text)
+        val completed=Regex("""^(\d+) kitab bitirilib · (\d+) aktiv oxu günü$""").matchEntire(text)
         if(completed!=null)return if(language=="ru")
             "${completed.groupValues[1]} прочитано · ${completed.groupValues[2]} дней чтения"
         else "${completed.groupValues[1]} finished · ${completed.groupValues[2]} active days"
-        val noNotes=Regex("""^Saxlanılmış qeydlər · (\\d+)$""").matchEntire(text)
+        val noNotes=Regex("""^Saxlanılmış qeydlər · (\d+)$""").matchEntire(text)
         if(noNotes!=null)return (if(language=="ru")"Сохранённые заметки · " else "Saved notes · ")+noNotes.groupValues[1]
-        val chapterOffline=Regex("""^Fəsil (\\d+) · offline saxlanılır$""").matchEntire(text)
+        val chapterOffline=Regex("""^Fəsil (\d+) · offline saxlanılır$""").matchEntire(text)
         if(chapterOffline!=null)return (if(language=="ru")"Глава " else "Chapter ")+
             chapterOffline.groupValues[1]+(if(language=="ru")" · сохранено на устройстве"
                 else " · saved offline")
