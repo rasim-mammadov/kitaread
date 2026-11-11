@@ -311,9 +311,9 @@ object UiLanguage {
         "Seriya" to Pair("Серия","Series"),
         "Ağıllı axtarış" to Pair("Умный поиск","Smart search"),
         "Kitab, müəllif, seriya, janr, kolleksiya axtar..." to Pair("Поиск книги, автора, серии, жанра, коллекции...","Search title, author, series, genre, collection..."),
-        "3.7 Preview · Offline EPUB / PDF / CBZ / Markdown" to Pair(
-            "Версия 3.7 · Без интернета · EPUB / PDF / CBZ / Markdown",
-            "3.7 Preview · Offline EPUB / PDF / CBZ / Markdown")
+        "3.8 Preview · Offline EPUB / PDF / CBZ / Markdown" to Pair(
+            "Версия 3.8 · Без интернета · EPUB / PDF / CBZ / Markdown",
+            "3.8 Preview · Offline EPUB / PDF / CBZ / Markdown")
     )
     fun translate(text:String,language:String):String {
         if(language=="az")return when(text) {
@@ -332,8 +332,8 @@ object UiLanguage {
             "Reader Theme tətbiq temasını izləsin"->"Oxuyucu tətbiqin temasını izləsin"
             "Qlobal Reader Theme seçimi Appearance bölməsindədir."->
                 "Oxuyucunun ümumi temasını Görünüş bölməsindən seç."
-            "3.7 Preview · Offline EPUB / PDF / CBZ / Markdown"->
-                "3.7 İlkin versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
+            "3.8 Preview · Offline EPUB / PDF / CBZ / Markdown"->
+                "3.8 İlkin versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
             "3.5 Preview · Offline EPUB / PDF / CBZ / Markdown"->
                 "3.5 İlkin versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
             "3.3.3 Preview · Offline EPUB / PDF / CBZ"->
