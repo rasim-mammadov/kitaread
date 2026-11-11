@@ -97,6 +97,16 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker) {
     var search by remember {mutableStateOf("")}
     var filter by remember {mutableStateOf("Hamısı")}
     var menuBook by remember {mutableStateOf<ReaderBook?>(null)}
+    var detailsBook by remember {mutableStateOf<ReaderBook?>(null)}
+    var showGlobalBookmarks by remember {mutableStateOf(false)}
+    var openingMark by remember {mutableStateOf<BookStore.BookMark?>(null)}
+    var genreFilter by remember {mutableStateOf(GenreCatalog.UNKNOWN)}
+    var collectionFilter by remember {mutableStateOf("")}
+    var libraryVersion by remember {mutableIntStateOf(0)}
+    fun refreshLibrary() {
+        books=store.books()
+        libraryVersion++
+    }
     var showDashboard by remember {mutableStateOf(false)}
     val filePicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri->
         if(uri!=null) try {
@@ -140,6 +150,11 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker) {
                                 Text("Leaf Reader",fontSize=30.sp,fontWeight=FontWeight.Bold,color=Ink)
                                 Text("Sənin şəxsi kitabxanan",fontSize=14.sp,color=Gray)
                             }
+                            FilledTonalIconButton(onClick={showGlobalBookmarks=true},
+                                modifier=Modifier.size(50.dp)) {
+                                Icon(Icons.Default.Bookmarks,"Əlfəcinlərim")
+                            }
+                            Spacer(Modifier.width(6.dp))
                             FilledTonalIconButton(onClick={showDashboard=true},
                                 modifier=Modifier.size(50.dp)) {
                                 Icon(Icons.Default.BarChart,"Oxu statistikası")
@@ -179,9 +194,42 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker) {
                             FilterChip(selected=filter==label,onClick={filter=label},label={Text(label)})
                         }
                     }
-                    Spacer(Modifier.height(12.dp))
-                    val visible=books.filter {
-                        (filter=="Hamısı" || it.status==filter) && it.title.contains(search,true)
+                    Spacer(Modifier.height(3.dp))
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                        FilterChip(selected=genreFilter==GenreCatalog.UNKNOWN,
+                            onClick={genreFilter=GenreCatalog.UNKNOWN},
+                            label={Text("Bütün janrlar")})
+                        (books.mapNotNull {store.find(it.path)?.optString("genre")}
+                            .filter {it.isNotBlank() && it!=GenreCatalog.UNKNOWN}
+                            .distinct().sorted()).forEach {g->
+                            FilterChip(selected=genreFilter==g,onClick={genreFilter=g},
+                                label={Text(g)})
+                        }
+                    }
+                    val allCollections=remember(libraryVersion) {store.collections()}
+                    if(allCollections.isNotEmpty()) {
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                            FilterChip(selected=collectionFilter.isEmpty(),
+                                onClick={collectionFilter=""},label={Text("Bütün kolleksiyalar")})
+                            allCollections.forEach {label->
+                                FilterChip(selected=collectionFilter==label,
+                                    onClick={collectionFilter=label},label={Text(label)})
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(9.dp))
+                    val visible=books.filter { book->
+                        val info=store.find(book.path)
+                        val genre=info?.optString("genre",GenreCatalog.UNKNOWN)
+                        val collections=info?.optJSONArray("collections") ?: org.json.JSONArray()
+                        (filter=="Hamısı" || book.status==filter) &&
+                            (book.title.contains(search,true) ||
+                                info?.optString("author").orEmpty().contains(search,true)) &&
+                            (genreFilter==GenreCatalog.UNKNOWN || genre==genreFilter) &&
+                            (collectionFilter.isEmpty() ||
+                                (0 until collections.length()).any {collections.optString(it)==collectionFilter})
                     }
                     if(visible.isEmpty()) {
                         Box(Modifier.fillMaxSize().padding(bottom=60.dp),contentAlignment=Alignment.Center) {
@@ -196,18 +244,37 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker) {
                     } else LazyColumn(contentPadding=PaddingValues(bottom=96.dp),
                         verticalArrangement=Arrangement.spacedBy(12.dp)) {
                         items(visible,key={it.path}) { book->
-                            LibraryCard(book,store,onOpen={selected=book},
-                                onMore={menuBook=book})
+                            LibraryCard(book,store,onOpen={
+                                    openingMark=null
+                                    selected=book
+                                },onMore={detailsBook=book})
                         }
                     }
                 }
             }
         } else {
             val book=selected!!
-            ReaderScreen(book,store,tracker,onExit={
+            ReaderScreen(book,store,tracker,openingMark,onExit={
                 selected=null
-                books=store.books()
+                openingMark=null
+                refreshLibrary()
             })
+        }
+        detailsBook?.let {book->
+            BookDetailsSheet(book,store,
+                onClose={detailsBook=null},
+                onChanged={refreshLibrary()})
+        }
+        if(showGlobalBookmarks) {
+            BookmarksSheet(store,onOpen={path,mark->
+                val target=store.books().firstOrNull {it.path==path}
+                if(target!=null) {
+                    openingMark=mark
+                    selected=target
+                    showGlobalBookmarks=false
+                }
+            },onClose={showGlobalBookmarks=false},
+                onChanged={refreshLibrary()})
         }
         menuBook?.let { book->
             AlertDialog(onDismissRequest={menuBook=null},
@@ -271,7 +338,10 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
 }
 
 @Composable
-private fun ReaderScreen(book:ReaderBook,store:BookStore,tracker:ReadingSessionTracker,onExit:()->Unit) {
+private fun ReaderScreen(
+    book:ReaderBook,store:BookStore,tracker:ReadingSessionTracker,
+    initialBookmark:BookStore.BookMark?=null,onExit:()->Unit
+) {
     BackHandler(onBack=onExit)
     val context=LocalContext.current
     val prefs=remember {store.setting()}
@@ -287,9 +357,16 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,tracker:ReadingSessionT
     var chrome by remember {mutableStateOf(false)}
     var showSettings by remember {mutableStateOf(false)}
     var showChapters by remember {mutableStateOf(false)}
-    var chapter by remember(book.path) {mutableIntStateOf(book.chapter)}
+    var showReaderBookmarks by remember {mutableStateOf(false)}
+    var bookmarkRefresh by remember {mutableIntStateOf(0)}
+    var readerBookmarkJump by remember {mutableIntStateOf(0)}
+    var chapter by remember(book.path,initialBookmark) {
+        mutableIntStateOf(initialBookmark?.chapter ?: book.chapter)
+    }
     var liveProgress by remember(book.path) {mutableIntStateOf(book.progress)}
-    var fraction by remember(book.path) {mutableDoubleStateOf(book.fraction)}
+    var fraction by remember(book.path,initialBookmark) {
+        mutableDoubleStateOf(initialBookmark?.fraction ?: book.fraction)
+    }
     var chapterFiles by remember(book.path) {mutableStateOf<List<File>>(emptyList())}
     var chapterLabels by remember(book.path) {mutableStateOf<List<String>>(emptyList())}
     var loadError by remember {mutableStateOf<String?>(null)}
@@ -400,7 +477,7 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,tracker:ReadingSessionT
             } else if(book.type=="epub") {
                 if(chapterFiles.isEmpty()) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
                     CircularProgressIndicator()
-                } else key(chapter,mode,font,line,theme,alignment) {
+                } else key(chapter,mode,font,line,theme,alignment,readerBookmarkJump) {
                     var ready by remember {mutableStateOf(false)}
                     val pageFile=chapterFiles[chapter]
                     AndroidView(factory={ctx->
@@ -559,8 +636,27 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,tracker:ReadingSessionT
                         Text(book.title,modifier=Modifier.weight(1f),maxLines=1,
                             overflow=TextOverflow.Ellipsis,color=textColor,fontWeight=FontWeight.Medium)
                         if(book.type=="epub") IconButton(onClick={showChapters=true},
-                            modifier=Modifier.size(48.dp)) {
+                            modifier=Modifier.size(44.dp)) {
                             Icon(Icons.Default.List,"Fəsillər",tint=textColor)
+                        }
+                        IconButton(onClick={
+                            val added=store.toggleBookmark(book.path,chapter,
+                                if(book.type=="epub")fraction else 0.0)
+                            bookmarkRefresh++
+                            Toast.makeText(context,
+                                if(added)"Əlfəcin əlavə edildi" else "Əlfəcin silindi",
+                                Toast.LENGTH_SHORT).show()
+                        },modifier=Modifier.size(44.dp)) {
+                            val isMarked=remember(bookmarkRefresh,chapter,fraction) {
+                                store.hasBookmark(book.path,chapter,
+                                    if(book.type=="epub")fraction else 0.0)
+                            }
+                            Icon(if(isMarked)Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                "Əlfəcin əlavə et və ya sil",tint=textColor)
+                        }
+                        IconButton(onClick={showReaderBookmarks=true},
+                            modifier=Modifier.size(44.dp)) {
+                            Icon(Icons.Default.Bookmarks,"Əlfəcinlərim",tint=textColor)
                         }
                         FilledTonalIconButton(onClick={showSettings=true},modifier=Modifier.size(48.dp)) {
                             Text("Aa",fontSize=18.sp,fontWeight=FontWeight.Bold)
@@ -654,6 +750,19 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,tracker:ReadingSessionT
                 }
             }
         }
+    }
+    if(showReaderBookmarks) {
+        BookmarksSheet(store,bookPath=book.path,
+            onOpen={_,mark->
+                chapter=mark.chapter
+                fraction=mark.fraction
+                bookmarkRefresh++
+                showReaderBookmarks=false
+                readerBookmarkJump++
+                saveProgress(fraction)
+            },
+            onClose={showReaderBookmarks=false},
+            onChanged={bookmarkRefresh++})
     }
     if(showChapters) {
         ModalBottomSheet(onDismissRequest={showChapters=false},containerColor=Cream) {
