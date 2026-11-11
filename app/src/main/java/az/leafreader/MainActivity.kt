@@ -222,6 +222,7 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
     var showSettings by remember {mutableStateOf(false)}
     var showChapters by remember {mutableStateOf(false)}
     var chapter by remember(book.path) {mutableIntStateOf(book.chapter)}
+    var liveProgress by remember(book.path) {mutableIntStateOf(book.progress)}
     var fraction by remember(book.path) {mutableDoubleStateOf(book.fraction)}
     var chapterFiles by remember(book.path) {mutableStateOf<List<File>>(emptyList())}
     var loadError by remember {mutableStateOf<String?>(null)}
@@ -244,6 +245,7 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
             val sum=sizes.sum().coerceAtLeast(1.0)
             ((sizes.take(chapter).sum()+sizes[chapter.coerceIn(0,sizes.lastIndex)]*fraction)/sum*100).roundToInt()
         }else ((chapter+fraction)/pageCount.coerceAtLeast(1)*100).roundToInt()
+        liveProgress=progress.coerceIn(0,99)
         store.change(book.path){item->
             item.put("page",chapter)
             item.put("scrollFraction",fraction)
@@ -309,6 +311,7 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
                 if(chapterFiles.isEmpty()) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
                     CircularProgressIndicator()
                 } else key(chapter,mode,font,line,theme) {
+                    var ready by remember {mutableStateOf(false)}
                     val pageFile=chapterFiles[chapter]
                     AndroidView(factory={ctx->
                         var startX=0f;var startY=0f
@@ -320,6 +323,11 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
                                 val index=(v.scrollX.toFloat()/step).roundToInt()
                                     .coerceIn(0,chapterPages-1)
                                 positionInChapter=index
+                                if(ready)saveProgress(if(chapterPages<=1)0.0 else
+                                    index.toDouble()/(chapterPages-1))
+                            }else if(ready) {
+                                val max=(v.contentHeight*v.scale-v.height).toInt().coerceAtLeast(0)
+                                saveProgress(if(max==0)0.0 else v.scrollY.toDouble()/max)
                             }
                         }
                         view.settings.javaScriptEnabled=false
@@ -357,6 +365,7 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
                                         val max=(v.contentHeight*v.scale-v.height).toInt().coerceAtLeast(0)
                                         v.scrollTo(0,(fraction*max).roundToInt())
                                     }
+                                    ready=true
                                 },350)
                             }
                             override fun shouldOverrideUrlLoading(view:WebView,request:WebResourceRequest)=true
@@ -442,7 +451,7 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
                 }
             }
             if(!chrome) {
-                Text((book.progress).toString()+"%",modifier=Modifier.align(Alignment.BottomStart)
+                Text(liveProgress.toString()+"%",modifier=Modifier.align(Alignment.BottomStart)
                     .padding(start=24.dp,bottom=12.dp),fontSize=12.sp,color=textColor.copy(alpha=0.6f))
                 Text(if(book.type=="epub")"Fəsil "+(chapter+1) else (chapter+1).toString()+"/"+pageCount,
                     modifier=Modifier.align(Alignment.BottomEnd).padding(end=24.dp,bottom=12.dp),
