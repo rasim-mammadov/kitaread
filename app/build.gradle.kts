@@ -9,8 +9,8 @@ android {
         applicationId = "az.leafreader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "2.0-preview"
+        versionCode = 4
+        versionName = "2.1-preview"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
