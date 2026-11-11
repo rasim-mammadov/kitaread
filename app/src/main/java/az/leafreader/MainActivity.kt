@@ -484,7 +484,6 @@ class MainActivity : Activity() {
             setFullScreen(true)
             (headerView as? LinearLayout)?.addView(action("Aa ⚙") { readerOptions() })
             readerContainer=FrameLayout(this); root.addView(readerContainer,LinearLayout.LayoutParams(-1,0,1f))
-            attachSideButtons()
             val foot=LinearLayout(this).apply {
                 orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; setPadding(8,4,8,8)
             }
@@ -752,6 +751,7 @@ class MainActivity : Activity() {
                 restoringPosition = false
             }
         }
+        attachSideButtons()
         book.put("page", page)
         controls?.text = "${page + 1} / $total   •   ${book.optInt("progress", 0)}%"
     }
