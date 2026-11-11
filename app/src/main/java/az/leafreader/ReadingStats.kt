@@ -16,6 +16,7 @@ data class ReadingOverview(
     val epubBooks: Int,
     val pdfBooks: Int,
     val comicBooks: Int,
+    val markdownBooks: Int,
     val completedMonthly: List<Pair<String,Int>>
 )
 
@@ -78,6 +79,7 @@ object ReadingStats {
             epubBooks=items.count {it.optString("type")=="epub"},
             pdfBooks=items.count {it.optString("type")=="pdf"},
             comicBooks=items.count {it.optString("type")=="cbz"},
+            markdownBooks=items.count {it.optString("type") in setOf("md","markdown")},
             completedMonthly=completedMonthly
         )
     }
