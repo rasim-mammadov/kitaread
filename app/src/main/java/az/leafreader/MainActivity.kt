@@ -488,7 +488,7 @@ class MainActivity : Activity() {
             val foot=LinearLayout(this).apply {
                 orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; setPadding(8,4,8,8)
             }
-            foot.addView(action("◀") { navigate(-1) })
+            foot.addView(action("◀") { readerTurn(-1) })
             foot.addView(action("☆") { bookmark() })
             controls=TextView(this).apply {
                 gravity=Gravity.CENTER; setTextColor(Color.DKGRAY)
@@ -496,7 +496,7 @@ class MainActivity : Activity() {
             }
             foot.addView(controls)
             foot.addView(action("☷") { bookmarkList() })
-            foot.addView(action("▶") { navigate(1) }); root.addView(foot)
+            foot.addView(action("▶") { readerTurn(1) }); root.addView(foot)
             footerView=foot
             readerBarsVisible=true
             drawPage()
@@ -701,8 +701,9 @@ class MainActivity : Activity() {
                         MotionEvent.ACTION_UP -> {
                             val dx=evt.x-touchDownX
                             val dy=evt.y-touchDownY
-                            if(kotlin.math.abs(dx)>dp(90) && kotlin.math.abs(dx)>kotlin.math.abs(dy)*1.4f) {
-                                navigate(if(dx<0)1 else -1)
+                            if(settings.getBoolean("swipeTurn",false) &&
+                               kotlin.math.abs(dx)>dp(90) && kotlin.math.abs(dx)>kotlin.math.abs(dy)*1.4f) {
+                                readerTurn(if(dx<0)1 else -1)
                             } else if(kotlin.math.abs(dx)<dp(8) && kotlin.math.abs(dy)<dp(8)) {
                                 toggleBars()
                             }
@@ -715,7 +716,7 @@ class MainActivity : Activity() {
                 val foreground=if(theme in listOf("Dark","AMOLED"))"#F5F5F5" else "#292F30"
                 val fontSize=settings.getInt("fontSize",18)
                 val css="<style>body{background:"+background+" !important;color:"+foreground+
-                    " !important;font-size:"+fontSize+"px !important;line-height:1.6 !important;"+
+                    " !important;font-size:"+fontSize+"px !important;line-height:"+ (settings.getInt("lineSpacing",160)/100.0) +" !important;"+
                     "margin:0 !important;padding:18px !important;box-sizing:border-box}"+
                     "img,svg{max-width:100% !important;height:auto !important}</style>"
                 val original=file.readText(Charsets.UTF_8)
@@ -741,8 +742,8 @@ class MainActivity : Activity() {
                 }
                 readerBitmap = bitmap
                 val viewer = ZoomPageView(this,
-                    onNext={navigate(if(book.optString("type")=="cbz" && settings.getBoolean("cbzRtl",false)) -1 else 1)},
-                    onPrevious={navigate(if(book.optString("type")=="cbz" && settings.getBoolean("cbzRtl",false)) 1 else -1)},
+                    onNext={if(settings.getBoolean("swipeTurn",false))readerTurn(1)},
+                    onPrevious={if(settings.getBoolean("swipeTurn",false))readerTurn(-1)},
                     onToggleControls={toggleBars()},
                     onZoomChanged={ value -> book.put("zoom",value.toDouble());save() })
                 activeReaderView = viewer
