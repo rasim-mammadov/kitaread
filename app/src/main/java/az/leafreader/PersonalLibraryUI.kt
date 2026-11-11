@@ -34,6 +34,7 @@ fun BookDetailsSheet(book:ReaderBook,store:BookStore,onClose:()->Unit,onChanged:
     val source=remember(book.path){store.find(book.path)}
     var title by remember(book.path){mutableStateOf(source?.optString("title").orEmpty())}
     var author by remember(book.path){mutableStateOf(source?.optString("author").orEmpty())}
+    var series by remember(book.path){mutableStateOf(source?.optString("series").orEmpty())}
     var genre by remember(book.path){mutableStateOf(source?.optString("genre",GenreCatalog.UNKNOWN) ?: GenreCatalog.UNKNOWN)}
     var newCollection by remember(book.path){mutableStateOf("")}
     var collections by remember(book.path){
@@ -51,6 +52,8 @@ fun BookDetailsSheet(book:ReaderBook,store:BookStore,onClose:()->Unit,onChanged:
             OutlinedTextField(title,{title=it},label={Text(ui("Kitabın adı"))},
                 modifier=Modifier.fillMaxWidth(),singleLine=true)
             OutlinedTextField(author,{author=it},label={Text(ui("Müəllif"))},
+                modifier=Modifier.fillMaxWidth(),singleLine=true)
+            OutlinedTextField(series,{series=it},label={Text(ui("Seriya"))},
                 modifier=Modifier.fillMaxWidth(),singleLine=true)
             Text(ui("Oxu statusu"),fontWeight=FontWeight.SemiBold)
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -111,6 +114,7 @@ fun BookDetailsSheet(book:ReaderBook,store:BookStore,onClose:()->Unit,onChanged:
                 store.change(book.path){row->
                     row.put("title",title.trim().ifBlank{book.title})
                     row.put("author",author.trim())
+                    row.put("series",series.trim().take(120))
                     row.put("genre",genre)
                     row.put("rating",rating.toInt())
                     row.put("status",status)
