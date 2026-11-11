@@ -63,10 +63,10 @@ fun LibrarySettingsSheet(
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.88f).padding(horizontal=20.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
                 if(section!="Settings")IconButton(onClick={section="Settings"}) {
-                    Icon(Icons.Default.ArrowBack,"Geri")
+                    Icon(Icons.Default.ArrowBack,ui("Geri"))
                 }
                 Text(ui(if(section=="Language")"Dil" else section),fontSize=25.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
-                IconButton(onClick=onClose) {Icon(Icons.Default.Close,"Bağla")}
+                IconButton(onClick=onClose) {Icon(Icons.Default.Close,ui("Bağla"))}
             }
             HorizontalDivider()
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
