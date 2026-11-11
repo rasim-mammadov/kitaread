@@ -225,6 +225,7 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
     var liveProgress by remember(book.path) {mutableIntStateOf(book.progress)}
     var fraction by remember(book.path) {mutableDoubleStateOf(book.fraction)}
     var chapterFiles by remember(book.path) {mutableStateOf<List<File>>(emptyList())}
+    var chapterLabels by remember(book.path) {mutableStateOf<List<String>>(emptyList())}
     var loadError by remember {mutableStateOf<String?>(null)}
     var pageCount by remember {mutableIntStateOf(1)}
     var chapterPages by remember {mutableIntStateOf(1)}
@@ -255,7 +256,11 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
     }
     LaunchedEffect(book.path) {
         try {
-            if(book.type=="epub")chapterFiles=withContext(Dispatchers.IO){store.extractChapters(book.path)}
+            if(book.type=="epub") {
+                val extracted=withContext(Dispatchers.IO){store.extractChapters(book.path)}
+                chapterLabels=withContext(Dispatchers.IO){store.chapterTitles(extracted)}
+                chapterFiles=extracted
+            }
             else pageCount=withContext(Dispatchers.IO){ReaderMedia.count(bookFile,book.type)}
             chapter=chapter.coerceIn(0,(if(book.type=="epub")chapterFiles.size else pageCount)-1)
         }catch(e:Exception){loadError=e.message ?: "Kitabı açmaq mümkün olmadı"}
@@ -531,8 +536,8 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
                 LazyColumn(contentPadding=PaddingValues(bottom=36.dp)) {
                     items(chapterFiles.size) {index->
                         ListItem(
-                            headlineContent={Text(chapterFiles[index].nameWithoutExtension
-                                .replace('_',' ').ifBlank{"Fəsil "+(index+1)})},
+                            headlineContent={Text(chapterLabels.getOrNull(index) ?:
+                                chapterFiles[index].nameWithoutExtension.replace('_',' '))},
                             leadingContent={Text((index+1).toString())},
                             modifier=Modifier.clickable {
                                 chapter=index;fraction=0.0;saveProgress(0.0);showChapters=false
