@@ -106,12 +106,30 @@ class BookStore(private val context: Context) {
         require(opf.path.startsWith(dir.canonicalPath+File.separator))
         val tags=opf.inputStream().use {xml(it)}
         val manifest=tags.filter {it.first=="item"}
-            .associate {it.second["id"].orEmpty() to it.second["href"].orEmpty()}
-        return tags.filter {it.first=="itemref"}.mapNotNull { row->
-            val href=manifest[row.second["idref"]] ?:return@mapNotNull null
-            val page=File(opf.parentFile,java.net.URLDecoder.decode(href.substringBefore('#'),"UTF-8")).canonicalFile
+            .associate {it.second["id"].orEmpty() to it.second}
+        val spine=tags.filter {it.first=="itemref"}
+        val pages=spine.mapNotNull { row->
+            val info=manifest[row.second["idref"]] ?:return@mapNotNull null
+            val href=info["href"] ?:return@mapNotNull null
+            val properties=info["properties"].orEmpty().split(' ')
+            val normalized=java.net.URLDecoder.decode(href.substringBefore('#'),"UTF-8")
+            val filename=normalized.substringAfterLast('/').lowercase()
+            // EPUB 3 nav and EPUB 2 NCX are navigation resources, not reading chapters.
+            if("nav" in properties || "ncx" in properties ||
+                filename in setOf("nav.xhtml","nav.html","toc.xhtml","toc.html",
+                    "contents.xhtml","contents.html","tableofcontents.xhtml"))return@mapNotNull null
+            if(row.second["linear"]=="no")return@mapNotNull null
+            val page=File(opf.parentFile,normalized).canonicalFile
             if(page.path.startsWith(dir.canonicalPath+File.separator) && page.exists() &&
                 page.extension.lowercase() in listOf("xhtml","html","htm")) page else null
+        }
+        // Some EPUBs consist only of navigation-like documents. Preserve a fallback
+        // rather than treating the book as empty.
+        return if(pages.isNotEmpty())pages else spine.mapNotNull {row->
+            val href=manifest[row.second["idref"]]?.get("href") ?:return@mapNotNull null
+            val file=File(opf.parentFile,java.net.URLDecoder.decode(href.substringBefore('#'),"UTF-8")).canonicalFile
+            if(file.exists() && file.path.startsWith(dir.canonicalPath+File.separator) &&
+                file.extension.lowercase() in listOf("xhtml","html","htm"))file else null
         }
     }
     private fun xml(stream:java.io.InputStream):List<Pair<String,Map<String,String>>> {
