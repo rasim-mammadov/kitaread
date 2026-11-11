@@ -157,7 +157,7 @@ class BookStore(private val context: Context) {
             if(path in present) {already++;continue}
             val file=File(home,path).canonicalFile
             if(path.isBlank()||file.parentFile!=home||!file.isFile ||
-                file.extension.lowercase() !in setOf("epub","pdf","cbz")) {
+                file.extension.lowercase() !in setOf("epub","pdf","cbz","md","markdown")) {
                 missing++
                 continue
             }
@@ -346,7 +346,7 @@ class BookStore(private val context: Context) {
             }else null
         } ?: "Book"
         val extension=title.substringAfterLast('.',"").lowercase()
-        require(extension in listOf("epub","pdf","cbz")){"Yalnız EPUB, PDF və CBZ dəstəklənir"}
+        require(extension in listOf("epub","pdf","cbz","md","markdown")){"Yalnız EPUB, PDF, CBZ və Markdown dəstəklənir"}
         val id="book_${System.currentTimeMillis()}.$extension"
         val file=File(context.filesDir,id)
         context.contentResolver.openInputStream(uri)!!.use {input->
@@ -366,6 +366,15 @@ class BookStore(private val context: Context) {
         persist(books)
         return id
     }
+    fun extractMarkdown(path:String):List<File> {
+        val source=File(context.filesDir,path).canonicalFile
+        require(source.parentFile==context.filesDir.canonicalFile &&
+            source.extension.lowercase() in setOf("md","markdown"))
+        return listOf(MarkdownBooks.materialize(source,context.cacheDir))
+    }
+    fun markdownChapterTitles(path:String):List<String> =
+        listOf(find(path)?.optString("title").orEmpty().ifBlank {"Markdown"})
+
     fun extractChapters(path:String):List<File> {
         val source=File(context.filesDir,path)
         val dir=File(context.cacheDir,"epub_v3_"+path.substringBeforeLast('.'))
