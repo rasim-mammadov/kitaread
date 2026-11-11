@@ -1,5 +1,6 @@
 package az.leafreader
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -25,6 +26,9 @@ class ZoomPageView(
 ) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private var bitmap: Bitmap? = null
+    private var outgoingBitmap: Bitmap? = null
+    private var transitionProgress=1f
+    private var transition:ValueAnimator?=null
     private var base = 1f
     private var zoom = 1f
     private var offsetX = 0f
@@ -65,12 +69,29 @@ class ZoomPageView(
             }
         })
 
-    fun setPage(image: Bitmap, initialZoom: Float, widthMode: Boolean) {
-        bitmap = image
-        requestedZoom = initialZoom.coerceIn(1f, 8f)
-        fitWidth = widthMode
-        zoom = requestedZoom
-        post { resetMatrix() }
+    fun setPage(image: Bitmap, initialZoom: Float, widthMode: Boolean,
+        smooth:Boolean=true) {
+        transition?.cancel()
+        val previous=bitmap?.takeIf {it!==image && !it.isRecycled}
+        outgoingBitmap=if(smooth)previous else null
+        bitmap=image
+        requestedZoom=initialZoom.coerceIn(1f, 8f)
+        fitWidth=widthMode
+        zoom=requestedZoom
+        transitionProgress=if(outgoingBitmap!=null)0f else 1f
+        resetMatrix()
+        if(outgoingBitmap!=null) {
+            transition=ValueAnimator.ofFloat(0f,1f).apply {
+                duration=210L
+                interpolator=android.view.animation.DecelerateInterpolator()
+                addUpdateListener {anim->
+                    transitionProgress=anim.animatedValue as Float
+                    if(transitionProgress>=1f) outgoingBitmap=null
+                    invalidate()
+                }
+                start()
+            }
+        }
         invalidate()
     }
 
@@ -121,10 +142,23 @@ class ZoomPageView(
         super.onDraw(canvas)
         canvas.drawColor(Color.rgb(18, 20, 23))
         val img = bitmap ?: return
+        val old=outgoingBitmap
+        if(old!=null && !old.isRecycled && transitionProgress<1f) {
+            // Outgoing image remains visible while the next decoded page fades in.
+            val fit=min(width.toFloat()/old.width,height.toFloat()/old.height)
+            canvas.save()
+            canvas.translate((width-old.width*fit)/2f,(height-old.height*fit)/2f)
+            canvas.scale(fit,fit)
+            paint.alpha=255
+            canvas.drawBitmap(old,0f,0f,paint)
+            canvas.restore()
+        }
         canvas.save()
         canvas.translate(offsetX, offsetY)
         canvas.scale(base * zoom, base * zoom)
+        paint.alpha=(255*transitionProgress).toInt().coerceIn(0,255)
         canvas.drawBitmap(img, 0f, 0f, paint)
+        paint.alpha=255
         canvas.restore()
     }
 
@@ -157,6 +191,12 @@ class ZoomPageView(
             }
         }
         return true
+    }
+
+    override fun onDetachedFromWindow() {
+        transition?.cancel()
+        outgoingBitmap=null
+        super.onDetachedFromWindow()
     }
 
     override fun performClick(): Boolean {
