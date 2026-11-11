@@ -48,6 +48,80 @@ class BookStore(private val context: Context) {
         items.forEach {arr.put(it)}
         prefs.edit().putString("items",arr.toString()).apply()
     }
+    data class RestoreResult(val imported:Int,val existing:Int,val missingFiles:Int)
+
+    /** Metadata only: book files are NOT included in this JSON. */
+    fun exportMetadata(): String {
+        val data=JSONArray()
+        records().forEach { data.put(JSONObject(it.toString())) }
+        val settingsJson=JSONObject()
+        readerSettings.all.forEach { (key,value)->
+            when(value) {
+                is Boolean,is Int,is Long,is Float,is String -> settingsJson.put(key,value)
+            }
+        }
+        return JSONObject()
+            .put("schemaVersion",3)
+            .put("kind","leaf-reader-metadata")
+            .put("includesBookFiles",false)
+            .put("books",data)
+            .put("readerSettings",settingsJson)
+            .toString(2)
+    }
+
+    /**
+     * Non-destructive restore. Existing books and options take precedence.
+     * No untrusted paths outside the app's private files directory are accepted.
+     */
+    fun restoreMetadata(json:String):RestoreResult {
+        val backup=JSONObject(json)
+        require(backup.optString("kind")=="leaf-reader-metadata") {
+            "Bu fayl Leaf Reader metadata backup formatında deyil"
+        }
+        require(backup.optInt("schemaVersion",0) in 1..3) {
+            "Dəstəklənməyən backup versiyası"
+        }
+        val importedBooks=backup.getJSONArray("books")
+        require(importedBooks.length() <= 20000){"Həddindən artıq böyük backup"}
+        val current=records().toMutableList()
+        val present=current.map {it.optString("path")}.toMutableSet()
+        var added=0;var already=0;var missing=0
+        val home=context.filesDir.canonicalFile
+        for(i in 0 until importedBooks.length()) {
+            val item=importedBooks.optJSONObject(i) ?:continue
+            val path=item.optString("path")
+            if(path in present) {already++;continue}
+            val file=File(home,path).canonicalFile
+            if(path.isBlank()||file.parentFile!=home||!file.isFile ||
+                file.extension.lowercase() !in setOf("epub","pdf","cbz")) {
+                missing++
+                continue
+            }
+            current.add(JSONObject(item.toString()))
+            present.add(path)
+            added++
+        }
+        val backupSettings=backup.optJSONObject("readerSettings")
+        if(backupSettings!=null) {
+            val changes=readerSettings.edit()
+            val keys=backupSettings.keys()
+            while(keys.hasNext()) {
+                val key=keys.next()
+                if(readerSettings.contains(key))continue
+                when(val value=backupSettings.opt(key)) {
+                    is Boolean -> changes.putBoolean(key,value)
+                    is Int -> changes.putInt(key,value)
+                    is Long -> changes.putLong(key,value)
+                    is Double -> changes.putFloat(key,value.toFloat())
+                    is String -> changes.putString(key,value)
+                }
+            }
+            changes.apply()
+        }
+        if(added>0)persist(current)
+        return RestoreResult(added,already,missing)
+    }
+
     fun import(uri:Uri):String {
         val title=context.contentResolver.query(uri,null,null,null,null)?.use {cursor->
             if(cursor.moveToFirst()) {
