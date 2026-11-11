@@ -122,6 +122,35 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         libraryVersion++
     }
     var showDashboard by remember {mutableStateOf(false)}
+    var showSettingsHome by remember {mutableStateOf(false)}
+    var showAdvancedFilters by remember {mutableStateOf(false)}
+    var showSearch by remember {mutableStateOf(false)}
+    var showExitConfirmation by remember {mutableStateOf(false)}
+    var deleteBook by remember {mutableStateOf<ReaderBook?>(null)}
+    var deleteMode by remember {mutableStateOf("hide")}
+    var formatFilter by remember {mutableStateOf("Hamısı")}
+    var sortMode by remember {
+        mutableStateOf(store.setting().getString("librarySort","Son oxunanlar") ?: "Son oxunanlar")
+    }
+    var appTheme by remember {
+        mutableStateOf(store.setting().getString("theme","Sepia") ?: "Sepia")
+    }
+    fun updateAppTheme(next:String) {
+        appTheme=next
+        store.setting().edit().putString("theme",next).apply()
+    }
+    val appColors=LibraryPalette.scheme(appTheme)
+    BackHandler(enabled=selected==null) {
+        when {
+            showExitConfirmation ->showExitConfirmation=false
+            showSettingsHome ->{showSettingsHome=false;refreshLibrary()}
+            showAdvancedFilters ->showAdvancedFilters=false
+            showGlobalBookmarks ->showGlobalBookmarks=false
+            showDashboard ->showDashboard=false
+            showSearch ->{showSearch=false;search=""}
+            else ->showExitConfirmation=true
+        }
+    }
     var showThemeGallery by remember {mutableStateOf(false)}
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {store.enrichLegacyEpub()}
@@ -163,64 +192,76 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                 Toast.LENGTH_LONG).show()
         }catch(e:Exception){Toast.makeText(context,e.message ?: "Import xətası",Toast.LENGTH_LONG).show()}
     }
-    MaterialTheme(colorScheme=lightColorScheme(
-        primary=Accent,secondary=Ink,background=Cream,surface=Color.White,
-        onBackground=Ink,onSurface=Ink
-    ),shapes=Shapes(medium=RoundedCornerShape(16.dp),large=RoundedCornerShape(24.dp))) {
+    MaterialTheme(colorScheme=appColors,
+        shapes=Shapes(medium=RoundedCornerShape(16.dp),large=RoundedCornerShape(24.dp))) {
         if(selected==null && showDashboard) {
             ReadingDashboard(store,onBack={showDashboard=false})
         } else if(selected==null) {
             Scaffold(
                 contentWindowInsets=WindowInsets.safeDrawing,
-                containerColor=Cream,
+                containerColor=MaterialTheme.colorScheme.background,
                 topBar={
                     Column(Modifier.fillMaxWidth().statusBarsPadding()
-                        .padding(start=22.dp,end=22.dp,top=12.dp,bottom=8.dp)) {
+                        .padding(start=18.dp,end=18.dp,top=10.dp,bottom=4.dp),
+                        verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text("Leaf Reader",fontSize=30.sp,fontWeight=FontWeight.Bold,color=Ink)
-                                Text("Sənin şəxsi kitabxanan",fontSize=14.sp,color=Gray)
+                            Text("Leaf Reader",fontSize=29.sp,fontWeight=FontWeight.Bold,
+                                color=MaterialTheme.colorScheme.onBackground,
+                                modifier=Modifier.weight(1f))
+                            IconButton(onClick={showSearch=!showSearch}) {
+                                Icon(Icons.Default.Search,"Kitab axtar")
                             }
-                            FilledTonalIconButton(onClick={showGlobalBookmarks=true},
-                                modifier=Modifier.size(50.dp)) {
-                                Icon(Icons.Default.Bookmarks,"Əlfəcinlərim")
+                            IconButton(onClick={showSettingsHome=true}) {
+                                Icon(Icons.Default.Settings,"Settings")
                             }
-                            Spacer(Modifier.width(6.dp))
-                            FilledTonalIconButton(onClick={showDashboard=true},
-                                modifier=Modifier.size(50.dp)) {
-                                Icon(Icons.Default.BarChart,"Oxu statistikası")
+                        }
+                        Row(Modifier.fillMaxWidth(),
+                            horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                            OutlinedButton(onClick={showDashboard=true},
+                                modifier=Modifier.weight(1f),
+                                contentPadding=PaddingValues(horizontal=5.dp,vertical=6.dp)) {
+                                Icon(Icons.Default.BarChart,null,Modifier.size(17.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Statistika",fontSize=11.sp)
+                            }
+                            OutlinedButton(onClick={showGlobalBookmarks=true},
+                                modifier=Modifier.weight(1f),
+                                contentPadding=PaddingValues(horizontal=5.dp,vertical=6.dp)) {
+                                Icon(Icons.Default.Bookmarks,null,Modifier.size(17.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Əlfəcinlər",fontSize=11.sp)
+                            }
+                            OutlinedButton(onClick={showAdvancedFilters=true},
+                                modifier=Modifier.weight(1f),
+                                contentPadding=PaddingValues(horizontal=5.dp,vertical=6.dp)) {
+                                Icon(Icons.Default.Tune,null,Modifier.size(17.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Filtrlər",fontSize=11.sp)
                             }
                         }
                     }
                 },
                 floatingActionButton={
-                    ExtendedFloatingActionButton(onClick={
+                    FloatingActionButton(onClick={
                         filePicker.launch(arrayOf("*/*"))
-                    },icon={Icon(Icons.Default.Add,null)},text={Text("Kitab əlavə et")})
+                    }) {
+                        Icon(Icons.Default.LibraryAdd,"Kitab əlavə et")
+                    }
                 }
             ){ inner->
                 Column(Modifier.fillMaxSize().padding(inner).padding(horizontal=18.dp)) {
-                    OutlinedTextField(
-                        search,{search=it},modifier=Modifier.fillMaxWidth(),
-                        singleLine=true,shape=RoundedCornerShape(18.dp),
-                        placeholder={Text("Kitab axtar...")},
-                        leadingIcon={Icon(Icons.Default.Search,null)}
-                    )
-                    Row(Modifier.fillMaxWidth().padding(top=5.dp),
-                        horizontalArrangement=Arrangement.spacedBy(8.dp),
-                        verticalAlignment=Alignment.CenterVertically) {
-                        TextButton(onClick={showThemeGallery=true}) {
-                            Icon(Icons.Default.Palette,null,Modifier.size(17.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Temalar",fontSize=13.sp)
-                        }
-                        Spacer(Modifier.weight(1f))
-                        TextButton(onClick={jsonExport.launch("leaf-reader-metadata.json")}) {
-                            Text("Export",fontSize=12.sp)
-                        }
-                        TextButton(onClick={jsonImport.launch(arrayOf("application/json","text/plain"))}) {
-                            Text("Import",fontSize=12.sp)
-                        }
+                    if(showSearch) {
+                        OutlinedTextField(
+                            search,{search=it},modifier=Modifier.fillMaxWidth(),
+                            singleLine=true,shape=RoundedCornerShape(18.dp),
+                            placeholder={Text("Kitab və müəllif axtar...")},
+                            leadingIcon={Icon(Icons.Default.Search,null)},
+                            trailingIcon={
+                                IconButton(onClick={search="";showSearch=false}) {
+                                    Icon(Icons.Default.Close,"Axtarışı bağla")
+                                }
+                            }
+                        )
                     }
                     Spacer(Modifier.height(4.dp))
                     Row(horizontalArrangement=Arrangement.spacedBy(7.dp),
@@ -229,44 +270,33 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                             FilterChip(selected=filter==label,onClick={filter=label},label={Text(label)})
                         }
                     }
-                    Spacer(Modifier.height(3.dp))
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                        FilterChip(selected=genreFilter==GenreCatalog.UNKNOWN,
-                            onClick={genreFilter=GenreCatalog.UNKNOWN},
-                            label={Text("Bütün janrlar")})
-                        (books.mapNotNull {store.find(it.path)?.optString("genre")}
-                            .filter {it.isNotBlank() && it!=GenreCatalog.UNKNOWN}
-                            .distinct().sorted()).forEach {g->
-                            FilterChip(selected=genreFilter==g,onClick={genreFilter=g},
-                                label={Text(g)})
+                    Spacer(Modifier.height(5.dp))
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                        Text("Kitabxanam",color=MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier=Modifier.weight(1f),fontSize=13.sp)
+                        TextButton(onClick={showSettingsHome=true}) {
+                            Icon(Icons.Default.Sort,null,Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(sortMode,fontSize=12.sp)
                         }
                     }
                     val allCollections=remember(libraryVersion) {store.collections()}
-                    if(allCollections.isNotEmpty()) {
-                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                            FilterChip(selected=collectionFilter.isEmpty(),
-                                onClick={collectionFilter=""},label={Text("Bütün kolleksiyalar")})
-                            allCollections.forEach {label->
-                                FilterChip(selected=collectionFilter==label,
-                                    onClick={collectionFilter=label},label={Text(label)})
-                            }
-                        }
-                    }
                     Spacer(Modifier.height(9.dp))
                     val visible=books.filter { book->
                         val info=store.find(book.path)
                         val genre=info?.optString("genre",GenreCatalog.UNKNOWN)
                         val collections=info?.optJSONArray("collections") ?: org.json.JSONArray()
+                        !((info?.optBoolean("hidden",false)) ?:false) &&
                         (filter=="Hamısı" || book.status==filter) &&
+                        (formatFilter=="Hamısı" || book.type.equals(formatFilter,true)) &&
                             (book.title.contains(search,true) ||
                                 info?.optString("author").orEmpty().contains(search,true)) &&
                             (genreFilter==GenreCatalog.UNKNOWN || genre==genreFilter) &&
                             (collectionFilter.isEmpty() ||
                                 (0 until collections.length()).any {collections.optString(it)==collectionFilter})
                     }
-                    if(visible.isEmpty()) {
+                    val ordered=store.sortBooks(visible,sortMode)
+                    if(ordered.isEmpty()) {
                         Box(Modifier.fillMaxSize().padding(bottom=60.dp),contentAlignment=Alignment.Center) {
                             Column(horizontalAlignment=Alignment.CenterHorizontally) {
                                 Icon(Icons.Default.AutoStories,null,Modifier.size(64.dp),tint=Accent)
@@ -278,11 +308,11 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         }
                     } else LazyColumn(contentPadding=PaddingValues(bottom=96.dp),
                         verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                        items(visible,key={it.path}) { book->
+                        items(ordered,key={it.path}) { book->
                             LibraryCard(book,store,onOpen={
                                     openingMark=null
                                     selectedPath=book.path
-                                },onMore={detailsBook=book})
+                                },onMore={menuBook=book})
                         }
                     }
                 }
