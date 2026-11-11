@@ -103,6 +103,25 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker) {
             books=store.books()
         }catch(e:Exception){Toast.makeText(context,e.message ?: "Fayl açılmadı",Toast.LENGTH_LONG).show()}
     }
+    val jsonExport=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) {uri->
+        if(uri!=null)try {
+            context.contentResolver.openOutputStream(uri)?.use {
+                it.write(store.exportMetadata().toByteArray(Charsets.UTF_8))
+            } ?:error("Yazma icazəsi yoxdur")
+            Toast.makeText(context,"JSON metadata backup saxlanıldı",Toast.LENGTH_LONG).show()
+        }catch(e:Exception){Toast.makeText(context,e.message ?: "Backup xətası",Toast.LENGTH_LONG).show()}
+    }
+    val jsonImport=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {uri->
+        if(uri!=null)try {
+            val data=context.contentResolver.openInputStream(uri)?.bufferedReader()?.use {it.readText()}
+                ?:error("Backup faylı oxunmadı")
+            val report=store.restoreMetadata(data)
+            books=store.books()
+            Toast.makeText(context,
+                "Bərpa: ${report.imported} kitab. ${report.missingFiles} kitabın faylı cihazda yoxdur.",
+                Toast.LENGTH_LONG).show()
+        }catch(e:Exception){Toast.makeText(context,e.message ?: "Import xətası",Toast.LENGTH_LONG).show()}
+    }
     MaterialTheme(colorScheme=lightColorScheme(
         primary=Accent,secondary=Ink,background=Cream,surface=Color.White,
         onBackground=Ink,onSurface=Ink
@@ -130,7 +149,19 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker) {
                         placeholder={Text("Kitab axtar...")},
                         leadingIcon={Icon(Icons.Default.Search,null)}
                     )
-                    Spacer(Modifier.height(12.dp))
+                    Row(Modifier.fillMaxWidth().padding(top=5.dp),
+                        horizontalArrangement=Arrangement.spacedBy(8.dp),
+                        verticalAlignment=Alignment.CenterVertically) {
+                        Text("Məlumatların ehtiyat nüsxəsi",fontSize=12.sp,color=Gray,
+                            modifier=Modifier.weight(1f))
+                        TextButton(onClick={jsonExport.launch("leaf-reader-metadata.json")}) {
+                            Text("Export",fontSize=12.sp)
+                        }
+                        TextButton(onClick={jsonImport.launch(arrayOf("application/json","text/plain"))}) {
+                            Text("Import",fontSize=12.sp)
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
                     Row(horizontalArrangement=Arrangement.spacedBy(7.dp),
                         modifier=Modifier.horizontalScroll(rememberScrollState())) {
                         listOf("Hamısı","Oxunur","Oxunmayıb","Bitirilib").forEach { label->
