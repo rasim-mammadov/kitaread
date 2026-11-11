@@ -15,7 +15,8 @@ data class ReadingOverview(
     val daily: List<DayReading>,
     val epubBooks: Int,
     val pdfBooks: Int,
-    val comicBooks: Int
+    val comicBooks: Int,
+    val completedMonthly: List<Pair<String,Int>>
 )
 
 object ReadingStats {
@@ -53,6 +54,19 @@ object ReadingStats {
         }
         val totalMs=items.sumOf {it.optLong("readingMs",0L).coerceAtLeast(0L)}
         val daily=minutes.map {DayReading(it.key,it.value/60_000L)}
+        val monthStart=today.withDayOfMonth(1)
+        val months=(5 downTo 0).map {monthStart.minusMonths(it.toLong())}
+        val completedMonthly=months.map {month->
+            val count=items.count {book->
+                if(book.optString("status")!="Bitirilib")false else {
+                    val date=try {LocalDate.parse(book.optString("completedAt"))}
+                        catch(_:Exception){null}
+                    date!=null && !date.isAfter(today) &&
+                        date.year==month.year && date.monthValue==month.monthValue
+                }
+            }
+            month.format(DateTimeFormatter.ofPattern("MM/yy")) to count
+        }
         return ReadingOverview(
             totalBooks=items.size,
             finishedBooks=items.count {it.optString("status")=="Bitirilib"},
@@ -63,7 +77,8 @@ object ReadingStats {
             daily=daily,
             epubBooks=items.count {it.optString("type")=="epub"},
             pdfBooks=items.count {it.optString("type")=="pdf"},
-            comicBooks=items.count {it.optString("type")=="cbz"}
+            comicBooks=items.count {it.optString("type")=="cbz"},
+            completedMonthly=completedMonthly
         )
     }
 }
