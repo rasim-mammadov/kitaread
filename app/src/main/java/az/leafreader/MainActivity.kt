@@ -61,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
@@ -323,9 +324,15 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         .padding(start=18.dp,end=18.dp,top=10.dp,bottom=4.dp),
                         verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                            Text(ui("KitaRead"),fontSize=29.sp,fontWeight=FontWeight.Bold,
-                                color=MaterialTheme.colorScheme.onBackground,
-                                modifier=Modifier.weight(1f))
+                            Row(modifier=Modifier.weight(1f),
+                                verticalAlignment=Alignment.CenterVertically) {
+                                Image(painterResource(R.drawable.kitaread_original_mark),
+                                    contentDescription="KitaRead",
+                                    modifier=Modifier.width(88.dp).height(34.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("KitaRead",fontSize=25.sp,fontWeight=FontWeight.Bold,
+                                    color=MaterialTheme.colorScheme.onBackground)
+                            }
                             IconButton(onClick={showSearch=!showSearch}) {
                                 Icon(Icons.Default.Search,ui("Kitab axtar"))
                             }
