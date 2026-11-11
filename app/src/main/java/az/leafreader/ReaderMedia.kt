@@ -39,8 +39,19 @@ object ReaderMedia {
         }
         "cbz" -> ZipFile(file).use {zip->
             val name=entries(zip)[index]
-            zip.getInputStream(zip.getEntry(name)).use {
-                BitmapFactory.decodeStream(it) ?:throw IllegalArgumentException("Şəkil açılmadı")
+            val entry=zip.getEntry(name)
+            val bounds=BitmapFactory.Options().apply {inJustDecodeBounds=true}
+            zip.getInputStream(entry).use {BitmapFactory.decodeStream(it,null,bounds)}
+            val maxDim=maxOf(bounds.outWidth,bounds.outHeight)
+            var sample=1
+            while(maxDim/sample>2500)sample*=2
+            val options=BitmapFactory.Options().apply {
+                inSampleSize=sample
+                inPreferredConfig=Bitmap.Config.RGB_565
+            }
+            zip.getInputStream(entry).use {
+                BitmapFactory.decodeStream(it,null,options)
+                    ?:throw IllegalArgumentException("Şəkil açılmadı")
             }
         }
         else -> throw IllegalArgumentException("Unsupported format: $type")
