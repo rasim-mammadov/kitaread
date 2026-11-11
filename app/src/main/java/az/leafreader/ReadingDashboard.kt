@@ -34,7 +34,8 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
         contentWindowInsets=WindowInsets.safeDrawing,
         containerColor=SoftBackground,
         topBar={
-            Row(Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=10.dp),
+            Row(Modifier.fillMaxWidth().statusBarsPadding()
+                .padding(horizontal=12.dp,vertical=10.dp),
                 verticalAlignment=Alignment.CenterVertically) {
                 IconButton(onClick=onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack,"Kitabxanaya qayıt")
