@@ -51,6 +51,17 @@ class ZoomPageView(
         object : GestureDetector.SimpleOnGestureListener() {
             override fun onDown(e: MotionEvent): Boolean = true
             override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+                if (zoom <= 1.05f && width > 0) {
+                    // Manga touch zones mirror page progression. Centre toggles toolbar.
+                    if (e.x < width * 0.22f) {
+                        if (rtlSwipe) onNext() else onPrevious()
+                        return true
+                    }
+                    if (e.x > width * 0.78f) {
+                        if (rtlSwipe) onPrevious() else onNext()
+                        return true
+                    }
+                }
                 onToggleControls()
                 return true
             }
