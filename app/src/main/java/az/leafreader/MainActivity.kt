@@ -2,6 +2,7 @@
 
 package az.leafreader
 
+import android.animation.ValueAnimator
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color as AndroidColor
@@ -689,6 +690,7 @@ private fun ReaderScreen(
         mutableStateOf(optionBoolean("smoothPageTurns",
             prefs.getBoolean("smoothPageTurns",true)))
     }
+    var pageAnimator by remember(book.path) {mutableStateOf<ValueAnimator?>(null)}
     val lifecycleOwner=LocalLifecycleOwner.current
     val readingClock=remember(book.path) {ReadingClock()}
     var elapsedSeconds by remember(book.path) {mutableLongStateOf(0L)}
@@ -790,6 +792,18 @@ private fun ReaderScreen(
             chapter=chapter.coerceIn(0,(if(isTextBook)chapterFiles.size else pageCount)-1)
         }catch(e:Exception){loadError=e.message ?: "Kitabı açmaq mümkün olmadı"}
     }
+    fun moveTextPage(view:WebView,target:Int) {
+        pageAnimator?.cancel()
+        if(!smoothTurns) {
+            view.scrollTo(0,target)
+            return
+        }
+        pageAnimator=ValueAnimator.ofInt(view.scrollY,target).apply {
+            duration=180L
+            addUpdateListener {view.scrollTo(0,it.animatedValue as Int)}
+            start()
+        }
+    }
     fun turn(dir:Int) {
         if(isTextBook && mode=="pages") {
             val view=webView
@@ -800,7 +814,7 @@ private fun ReaderScreen(
                 val target=(next*step).coerceIn(0,maxScroll)
                 if((dir>0 && view.scrollY<maxScroll-8) ||
                     (dir<0 && view.scrollY>8)) {
-                    view.scrollTo(0,target)
+                    moveTextPage(view,target)
                     positionInChapter=next.coerceAtLeast(0)
                     saveProgress(if(maxScroll==0)0.0 else target.toDouble()/maxScroll)
                     return
@@ -811,7 +825,7 @@ private fun ReaderScreen(
                 val max=(v.contentHeight*v.scale-v.height).toInt().coerceAtLeast(0)
                 val target=v.scrollY+dir*(v.height*0.88f).toInt()
                 if(target in 1 until max) {
-                    v.scrollTo(0,target)
+                    moveTextPage(v,target)
                     saveProgress(if(max==0)0.0 else target.toDouble()/max)
                     return
                 }
@@ -838,6 +852,7 @@ private fun ReaderScreen(
         tracker.begin(book.path)
         onDispose {
             tracker.end()
+            pageAnimator?.cancel()
             webView?.destroy()
         }
     }
