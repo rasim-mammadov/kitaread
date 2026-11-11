@@ -744,10 +744,27 @@ class MainActivity : Activity() {
     }
     private fun bookmark() {
         val b=current ?:return
+        val fraction=if(b.optString("type")=="epub") {
+            if(pagedEpub()) {
+                if(epubPageCount<=1)0.0 else epubPageIndex.toDouble()/(epubPageCount-1)
+            } else {
+                val v=web
+                if(v==null)0.0 else scrollFraction(v,(v.contentHeight*v.scale-v.height).roundToInt())
+            }
+        } else 0.0
         val marks=b.optJSONArray("bookmarks") ?: JSONArray()
-        if((0 until marks.length()).none { marks.optInt(it)==page })marks.put(page)
-        b.put("bookmarks",marks);save()
-        Toast.makeText(this,"Əlfəcin saxlanıldı",Toast.LENGTH_SHORT).show()
+        val exists=(0 until marks.length()).any {i->
+            val item=marks.opt(i)
+            if(item is JSONObject)
+                item.optInt("chapter")==page && abs(item.optDouble("fraction",0.0)-fraction)<0.02
+            else marks.optInt(i)==page && fraction==0.0
+        }
+        if(!exists) {
+            marks.put(JSONObject().put("chapter",page).put("fraction",fraction))
+            b.put("bookmarks",marks);save()
+        }
+        Toast.makeText(this,if(exists)"Əlfəcin artıq mövcuddur" else "Əlfəcin saxlanıldı",
+            Toast.LENGTH_SHORT).show()
     }
     private fun bookmarkList() {
         val marks=current?.optJSONArray("bookmarks") ?: JSONArray()
@@ -755,12 +772,20 @@ class MainActivity : Activity() {
             Toast.makeText(this,"Əlfəcin yoxdur",Toast.LENGTH_SHORT).show()
             return
         }
-        val items=(0 until marks.length()).map {"Səhifə "+(marks.optInt(it)+1)}.toTypedArray()
+        val items=(0 until marks.length()).map {i->
+            val saved=marks.opt(i)
+            val chapter=if(saved is JSONObject)saved.optInt("chapter",0) else marks.optInt(i)
+            val percent=if(saved is JSONObject)(saved.optDouble("fraction",0.0)*100).roundToInt() else 0
+            "Fəsil ${chapter+1} · $percent%"
+        }.toTypedArray()
         AlertDialog.Builder(this).setTitle("Əlfəcinlər").setItems(items) {_,selected->
-            page=marks.optInt(selected)
-            current?.put("scrollFraction",0.0)
+            val saved=marks.opt(selected)
+            page=if(saved is JSONObject)saved.optInt("chapter",0) else marks.optInt(selected)
+            page=page.coerceIn(0,total-1)
+            val fraction=if(saved is JSONObject)saved.optDouble("fraction",0.0) else 0.0
+            current?.put("page",page)
+            current?.put("scrollFraction",fraction)
             drawPage()
-            recordPosition(0.0,true)
         }.setNegativeButton("Bağla",null).show()
     }
     private fun navigate(delta:Int) {
