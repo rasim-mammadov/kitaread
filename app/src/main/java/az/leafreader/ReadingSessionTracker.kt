@@ -82,6 +82,7 @@ class ReadingSessionTracker(private val store: BookStore) {
             book.put("readingSessions", sessions)
             if (book.optString("startedAt").isEmpty())book.put("startedAt", date)
             book.put("lastReadAt", date)
+            book.put("lastReadTimestamp",System.currentTimeMillis())
         }
         accumulatedMs = 0L
         startedAt = System.currentTimeMillis()
