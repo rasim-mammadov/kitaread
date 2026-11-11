@@ -325,8 +325,45 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                 refreshLibrary()
             })
         }
-        if(showThemeGallery) {
-            ThemePickerDialog(store,onDismiss={showThemeGallery=false})
+        if(showSettingsHome) {
+            LibrarySettingsSheet(
+                store=store,appTheme=appTheme,onTheme={updateAppTheme(it)},
+                onExport={jsonExport.launch("leaf-reader-metadata.json")},
+                onImport={jsonImport.launch(arrayOf("application/json","text/plain"))},
+                onRestore={path->
+                    store.hideBook(path,false)
+                    refreshLibrary()
+                },
+                onClose={
+                    showSettingsHome=false
+                    sortMode=store.setting().getString("librarySort","Son oxunanlar")
+                        ?: "Son oxunanlar"
+                    refreshLibrary()
+                }
+            )
+        }
+        if(showAdvancedFilters) {
+            AdvancedFiltersSheet(
+                genres=books.mapNotNull {store.find(it.path)?.optString("genre")}
+                    .filter {it.isNotBlank()}.distinct().sorted(),
+                collections=store.collections(),
+                genre=genreFilter,format=formatFilter,collection=collectionFilter,
+                onGenre={genreFilter=it},onFormat={formatFilter=it},
+                onCollection={collectionFilter=it},
+                onClose={showAdvancedFilters=false}
+            )
+        }
+        if(showExitConfirmation) {
+            AlertDialog(
+                onDismissRequest={showExitConfirmation=false},
+                title={Text("Leaf Reader-dən çıxmaq istəyirsən?")},
+                text={Text("Kitabxanan və oxuma mövqeyin saxlanılacaq.")},
+                confirmButton={TextButton(onClick={
+                    showExitConfirmation=false
+                    (context as? ComponentActivity)?.finish()
+                }) {Text("Çıx")}},
+                dismissButton={TextButton(onClick={showExitConfirmation=false}) {Text("Ləğv et")}}
+            )
         }
         detailsBook?.let {book->
             BookDetailsSheet(book,store,
@@ -344,29 +381,58 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
             },onClose={showGlobalBookmarks=false},
                 onChanged={refreshLibrary()})
         }
-        menuBook?.let { book->
-            AlertDialog(onDismissRequest={menuBook=null},
+        menuBook?.let {book->
+            AlertDialog(
+                onDismissRequest={menuBook=null},
                 title={Text(book.title,maxLines=2)},
                 text={
                     Column {
-                        listOf("Oxunmayıb","Oxunur","Bitirilib","Yarımçıq saxlanılıb").forEach { status->
-                            TextButton(onClick={
-                                store.change(book.path) { row->
-                                    row.put("status",status)
-                                    if(status=="Bitirilib") {
-                                        row.put("progress",100)
-                                        if(row.optString("completedAt").isEmpty())
-                                            row.put("completedAt",java.text.SimpleDateFormat("yyyy-MM-dd",Locale.US)
-                                                .format(java.util.Date()))
-                                    }
-                                }
-                                books=store.books()
-                                menuBook=null
-                            },modifier=Modifier.fillMaxWidth()) {Text(status)}
+                        TextButton(onClick={
+                            detailsBook=book
+                            menuBook=null
+                        },modifier=Modifier.fillMaxWidth()) {
+                            Text("Kitab detalları və status")
+                        }
+                        TextButton(onClick={
+                            store.hideBook(book.path,true)
+                            refreshLibrary()
+                            menuBook=null
+                        },modifier=Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.VisibilityOff,null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Kitabxanadan gizlət")
+                        }
+                        TextButton(onClick={
+                            deleteMode="remove";deleteBook=book;menuBook=null
+                        },modifier=Modifier.fillMaxWidth()) {
+                            Text("Kitabxanadan çıxar (fayl qalsın)")
+                        }
+                        TextButton(onClick={
+                            deleteMode="delete";deleteBook=book;menuBook=null
+                        },modifier=Modifier.fillMaxWidth()) {
+                            Text("Kitab və məlumatlarını tamamilə sil")
                         }
                     }
                 },
                 confirmButton={TextButton(onClick={menuBook=null}) {Text("Bağla")}}
+            )
+        }
+        deleteBook?.let {book->
+            AlertDialog(
+                onDismissRequest={deleteBook=null},
+                title={Text(if(deleteMode=="delete")"Kitab həmişəlik silinsin?"
+                    else "Kitabxanadan çıxarılsın?")},
+                text={Text(if(deleteMode=="delete")
+                    "Kitab faylı, əlfəcinlər, oxuma tarixçəsi və qeydləri silinəcək. "+
+                        "Bu əməliyyat geri qaytarıla bilməz."
+                    else "Kitab qeydini kitabxanadan çıxaracağıq. Orijinal fayl "+
+                        "tətbiqin saxlamasında qalacaq, amma siyahıda görünməyəcək.")},
+                confirmButton={TextButton(onClick={
+                    store.removeBook(book.path,deleteMode=="delete")
+                    refreshLibrary()
+                    deleteBook=null
+                }) {Text(if(deleteMode=="delete")"Həmişəlik sil" else "Çıxar")}},
+                dismissButton={TextButton(onClick={deleteBook=null}) {Text("Ləğv et")}}
             )
         }
     }
@@ -380,7 +446,7 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
         else null
     }
     Card(onClick=onOpen,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(20.dp),
-        colors=CardDefaults.cardColors(containerColor=Color.White),
+        colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),
         elevation=CardDefaults.cardElevation(defaultElevation=1.dp)) {
         Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically) {
             Box(Modifier.size(width=78.dp,height=108.dp).clip(RoundedCornerShape(10.dp))
@@ -392,6 +458,7 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Text(book.title,fontWeight=FontWeight.SemiBold,fontSize=17.sp,
+                    color=MaterialTheme.colorScheme.onSurface,
                     maxLines=2,overflow=TextOverflow.Ellipsis)
                 val metadata=store.find(book.path)
                 val author=metadata?.optString("author").orEmpty()
@@ -420,7 +487,14 @@ private fun ReaderScreen(
     BackHandler(onBack=onExit)
     val context=LocalContext.current
     val prefs=remember {store.setting()}
-    var theme by remember {mutableStateOf(prefs.getString("theme","Sepia") ?: "Sepia")}
+    var readerFollowsApp by remember {
+        mutableStateOf(prefs.getBoolean("readerFollowsApp",true))
+    }
+    var theme by remember {
+        mutableStateOf(if(readerFollowsApp)
+            prefs.getString("theme","Sepia") ?: "Sepia"
+        else prefs.getString("readerTheme","Sepia") ?: "Sepia")
+    }
     var rotationMode by remember {
         mutableStateOf(prefs.getString("screenOrientation","Auto") ?: "Auto")
     }
@@ -832,7 +906,9 @@ private fun ReaderScreen(
                     ReadingThemes.presets.forEach {t->
                         FilterChip(theme==t.name,{
                             theme=t.name
-                            prefs.edit().putString("theme",t.name).apply()
+                            prefs.edit().putString("readerTheme",t.name)
+                                .putBoolean("readerFollowsApp",false).apply()
+                            readerFollowsApp=false
                         },label={Text(t.name)})
                     }
                 }
