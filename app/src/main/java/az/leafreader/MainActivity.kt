@@ -323,7 +323,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         .padding(start=18.dp,end=18.dp,top=10.dp,bottom=4.dp),
                         verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                            Text(ui("Leaf Reader"),fontSize=29.sp,fontWeight=FontWeight.Bold,
+                            Text(ui("KitaRead"),fontSize=29.sp,fontWeight=FontWeight.Bold,
                                 color=MaterialTheme.colorScheme.onBackground,
                                 modifier=Modifier.weight(1f))
                             IconButton(onClick={showSearch=!showSearch}) {
@@ -677,7 +677,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         if(showExitConfirmation) {
             AlertDialog(
                 onDismissRequest={showExitConfirmation=false},
-                title={Text(ui("Leaf Reader-dən çıxmaq istəyirsən?"))},
+                title={Text(ui("KitaRead-dən çıxmaq istəyirsən?"))},
                 text={Text(ui("Kitabxanan və oxuma mövqeyin saxlanılacaq."))},
                 confirmButton={TextButton(onClick={
                     showExitConfirmation=false
