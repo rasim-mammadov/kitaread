@@ -80,7 +80,7 @@ fun BookDetailsSheet(book:ReaderBook,store:BookStore,onClose:()->Unit,onChanged:
                         store.removeFromCollection(book.path,label)
                         collections=collections.filterNot {it==label}
                         onChanged()
-                    }) {Icon(Icons.Default.DeleteOutline,"Kolleksiyadan çıxar")}
+                    }) {Icon(Icons.Default.DeleteOutline,ui("Kolleksiyadan çıxar"))}
                 }
             }
             Row(verticalAlignment=Alignment.CenterVertically) {
@@ -175,7 +175,7 @@ fun BookmarksSheet(
                             refresh++
                             onChanged()
                         }) {
-                            Icon(Icons.Default.DeleteOutline,"Əlfəcini sil")
+                            Icon(Icons.Default.DeleteOutline,ui("Əlfəcini sil"))
                         }
                     }
                     HorizontalDivider()
