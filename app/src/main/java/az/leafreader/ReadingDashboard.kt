@@ -69,6 +69,7 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                         "Aktiv gün: ${overview.activeDays}",Modifier.weight(1f))
                 }
             }
+            item { ReadingInsightsPanel(store,overview,LocalDate.now()) }
             item {
                 Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),
                     shape=RoundedCornerShape(22.dp)) {
