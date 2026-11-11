@@ -21,6 +21,7 @@ class ZoomPageView(
     context: Context,
     private val onNext: () -> Unit,
     private val onPrevious: () -> Unit,
+    private val rtlSwipe:Boolean=false,
     private val onToggleControls: () -> Unit,
     private val onZoomChanged: (Float) -> Unit
 ) : View(context) {
@@ -62,7 +63,7 @@ class ZoomPageView(
                 val dx = e2.x - e1.x
                 val dy = e2.y - e1.y
                 if (abs(dx) > 85f * resources.displayMetrics.density && abs(dx) > abs(dy) * 1.2f) {
-                    if (dx < 0) onNext() else onPrevious()
+                    if ((dx < 0) != rtlSwipe) onNext() else onPrevious()
                     return true
                 }
                 return false
