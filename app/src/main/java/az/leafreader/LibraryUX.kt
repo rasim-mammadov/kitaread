@@ -131,7 +131,9 @@ fun LibrarySettingsSheet(
                                 sort=value;prefs.edit().putString("librarySort",value).apply();onSort(value)
                             },verticalAlignment=Alignment.CenterVertically) {
                                 RadioButton(selected=sort==value,onClick={
-                                    sort=value;prefs.edit().putString("librarySort",value).apply()
+                                    sort=value
+                                    prefs.edit().putString("librarySort",value).apply()
+                                    onSort(value)
                                 })
                                 Text(value)
                             }
