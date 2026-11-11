@@ -37,6 +37,18 @@ object GenreCatalog {
         }
         return UNKNOWN
     }
+    fun level(finished:Int):String=when {
+        finished>=15 -> "III · Ustad"
+        finished>=5 -> "II · Səyyah"
+        finished>=1 -> "I · Kəşfiyyatçı"
+        else -> "Kilidli"
+    }
+    fun nextMilestone(finished:Int):Int?=when {
+        finished<1 -> 1
+        finished<5 -> 5
+        finished<15 -> 15
+        else -> null
+    }
     fun title(genre:String):String=when(genre) {
         "Elmi fantastika"->"Kosmos Səyyahı"
         "Fantastika"->"Cəngavər"
