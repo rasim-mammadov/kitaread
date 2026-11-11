@@ -13,6 +13,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.SystemClock
+import android.util.LruCache
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -1220,13 +1221,35 @@ private fun ReaderScreen(
                 var displayedBitmap by remember(book.path) {
                     mutableStateOf<Bitmap?>(null)
                 }
+                val pageCache=remember(book.path) {
+                    object:LruCache<Int,Bitmap>(48*1024*1024) {
+                        override fun sizeOf(key:Int,value:Bitmap):Int=value.byteCount
+                    }
+                }
+                val prefetchScope=rememberCoroutineScope()
                 LaunchedEffect(chapter,book.path) {
                     try {
+                        val index=chapter
                         val next=withContext(Dispatchers.IO) {
-                            ReaderMedia.page(bookFile,book.type,chapter)
+                            pageCache.get(index) ?:ReaderMedia.page(bookFile,book.type,index).also {
+                                pageCache.put(index,it)
+                            }
                         }
                         displayedBitmap=next
                         loadError=null
+                        // Neighbouring pages decode off the UI thread for a fast next turn.
+                        val neighbor=if(book.type=="cbz" && prefs.getBoolean("cbzRtl",false))
+                            index-1 else index+1
+                        if(neighbor in 0 until pageCount && pageCache.get(neighbor)==null) {
+                            prefetchScope.launch(Dispatchers.IO) {
+                                runCatching {
+                                    val image=ReaderMedia.page(bookFile,book.type,neighbor)
+                                    synchronized(pageCache) {
+                                        if(pageCache.get(neighbor)==null)pageCache.put(neighbor,image)
+                                    }
+                                }
+                            }
+                        }
                     }catch(e:Exception) {
                         loadError=e.message ?: "Səhifə göstərilmədi"
                     }
@@ -1251,7 +1274,7 @@ private fun ReaderScreen(
                             if(view.tag !== currentBitmap) {
                                 view.setPage(currentBitmap,
                                     prefs.getFloat("zoom",1f),
-                                    fitWidth)
+                                    fitWidth,smoothTurns)
                                 view.tag=currentBitmap
                             } else if(view.fitWidthEnabled()!=fitWidth) {
                                 view.setFitWidth(fitWidth)
