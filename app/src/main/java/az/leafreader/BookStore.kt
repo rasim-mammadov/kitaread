@@ -132,9 +132,11 @@ class BookStore(private val context: Context) {
                 file.extension.lowercase() in listOf("xhtml","html","htm"))file else null
         }
     }
-    fun chapterTitles(chapters:List<File>):List<String> {
+    fun chapterTitles(bookPath:String,chapters:List<File>):List<String> {
         if(chapters.isEmpty())return emptyList()
-        val directory=chapters.first().parentFile ?:return emptyList()
+        // The nav document can be in the EPUB package root, while chapters live
+        // in a nested Text/ directory. Search only this book's extracted files.
+        val directory=File(context.cacheDir,"epub_v3_"+bookPath.substringBeforeLast('.'))
         val nav=directory.walkTopDown().filter {it.isFile &&
             it.name.lowercase() in setOf("nav.xhtml","nav.html","toc.xhtml","toc.html",
                 "contents.xhtml","contents.html")}.firstOrNull()
