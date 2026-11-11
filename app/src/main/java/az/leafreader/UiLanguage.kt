@@ -221,8 +221,7 @@ object UiLanguage {
         "Əlfəcin əlavə edildi" to Pair("Закладка добавлена","Bookmark added"),
         "Əlfəcin silindi" to Pair("Закладка удалена","Bookmark removed"),
         "Yalnız EPUB, PDF, CBZ və Markdown dəstəklənir" to Pair("Поддерживаются только EPUB, PDF, CBZ и Markdown","Only EPUB, PDF, CBZ and Markdown are supported"),
-        "3.5 Preview · Offline EPUB / PDF / CBZ / Markdown" to Pair("Версия 3.5 · EPUB / PDF / CBZ / Markdown офлайн","3.5 Preview · Offline EPUB / PDF / CBZ / Markdown")
-,
+        "3.5 Preview · Offline EPUB / PDF / CBZ / Markdown" to Pair("Версия 3.5 · EPUB / PDF / CBZ / Markdown офлайн","3.5 Preview · Offline EPUB / PDF / CBZ / Markdown"),
         "Bitirilmiş kitab" to Pair("Прочитанные книги","Finished books"),
         "Oxuma vaxtı" to Pair("Время чтения","Reading time"),
         "Cari zəncir" to Pair("Текущая серия","Current streak"),
