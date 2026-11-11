@@ -12,6 +12,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.view.MotionEvent
+import android.view.View
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -141,6 +142,12 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         store.setting().edit().putString("theme",next).apply()
     }
     val appColors=LibraryPalette.scheme(appTheme)
+    SideEffect {
+        @Suppress("DEPRECATION")
+        (context as? ComponentActivity)?.window?.decorView?.systemUiVisibility=
+            if(appTheme in setOf("Dark","AMOLED","Midnight","Graphite"))0
+            else View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+    }
     BackHandler(enabled=selected==null) {
         when {
             showExitConfirmation ->showExitConfirmation=false
