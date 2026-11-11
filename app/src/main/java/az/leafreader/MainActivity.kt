@@ -183,22 +183,22 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
             refreshLibrary()
             selectedPath=imported
         }catch(e:Exception) {
-            Toast.makeText(context,e.message ?: "Kitab açıla bilmədi",Toast.LENGTH_LONG).show()
+            Toast.makeText(context,UiLanguage.translate(e.message ?: "Kitab açıla bilmədi",store.setting().getString("language","az") ?: "az"),Toast.LENGTH_LONG).show()
         }
     }
     val filePicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri->
         if(uri!=null) try {
             store.import(uri)
             books=store.books()
-        }catch(e:Exception){Toast.makeText(context,e.message ?: "Fayl açılmadı",Toast.LENGTH_LONG).show()}
+        }catch(e:Exception){Toast.makeText(context,UiLanguage.translate(e.message ?: "Fayl açılmadı",store.setting().getString("language","az") ?: "az"),Toast.LENGTH_LONG).show()}
     }
     val jsonExport=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) {uri->
         if(uri!=null)try {
             context.contentResolver.openOutputStream(uri)?.use {
                 it.write(store.exportMetadata().toByteArray(Charsets.UTF_8))
             } ?:error("Yazma icazəsi yoxdur")
-            Toast.makeText(context,"JSON metadata backup saxlanıldı",Toast.LENGTH_LONG).show()
-        }catch(e:Exception){Toast.makeText(context,e.message ?: "Backup xətası",Toast.LENGTH_LONG).show()}
+            Toast.makeText(context,UiLanguage.translate("JSON metadata backup saxlanıldı",store.setting().getString("language","az") ?: "az"),Toast.LENGTH_LONG).show()
+        }catch(e:Exception){Toast.makeText(context,UiLanguage.translate(e.message ?: "Backup xətası",store.setting().getString("language","az") ?: "az"),Toast.LENGTH_LONG).show()}
     }
     val jsonImport=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {uri->
         if(uri!=null)try {
@@ -206,10 +206,9 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                 ?:error("Backup faylı oxunmadı")
             val report=store.restoreMetadata(data)
             books=store.books()
-            Toast.makeText(context,
-                "Bərpa: ${report.imported} kitab. ${report.missingFiles} kitabın faylı cihazda yoxdur.",
+            Toast.makeText(context,UiLanguage.translate("Bərpa: ${report.imported} kitab. ${report.missingFiles} kitabın faylı cihazda yoxdur.",
                 Toast.LENGTH_LONG).show()
-        }catch(e:Exception){Toast.makeText(context,e.message ?: "Import xətası",Toast.LENGTH_LONG).show()}
+        }catch(e:Exception){Toast.makeText(context,e.message ?: "Import xətası",store.setting().getString("language","az") ?: "az"),Toast.LENGTH_LONG).show()}
     }
     CompositionLocalProvider(LocalUiLanguage provides language) {
     MaterialTheme(colorScheme=appColors,
@@ -514,7 +513,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         refreshLibrary()
                         deleteBook=null
                     }catch(e:Exception) {
-                        Toast.makeText(context,e.message ?: "Kitab silinmədi",
+                        Toast.makeText(context,UiLanguage.translate(e.message ?: "Kitab silinmədi",
                             Toast.LENGTH_LONG).show()
                     }
                 }) {Text(ui(if(deleteMode=="delete")"Həmişəlik sil" else "Çıxar"))}},
@@ -727,7 +726,7 @@ private fun ReaderScreen(
                     item.put("completedAt",java.text.SimpleDateFormat("yyyy-MM-dd",Locale.US)
                         .format(java.util.Date()))
             }
-            Toast.makeText(context,"Kitab bitirildi ✓",Toast.LENGTH_SHORT).show()
+            Toast.makeText(context,"Kitab bitirildi ✓",store.setting().getString("language","az") ?: "az"),Toast.LENGTH_SHORT).show()
         }
     }
     DisposableEffect(book.path) {
