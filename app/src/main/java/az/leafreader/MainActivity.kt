@@ -18,6 +18,9 @@ import android.view.WindowInsetsController
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import kotlinx.coroutines.delay
 import org.json.JSONObject
 import android.view.MotionEvent
@@ -630,6 +633,35 @@ private fun ReaderScreen(
         mutableStateOf(optionString("screenOrientation",prefs.getString("screenOrientation","Auto") ?: "Auto"))
     }
     val activity=context as? ComponentActivity
+    DisposableEffect(activity,focusMode) {
+        val window=activity?.window
+        if(focusMode && window!=null) {
+            val controller=WindowCompat.getInsetsController(window,window.decorView)
+            controller.systemBarsBehavior=
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        }
+        onDispose {
+            if(window!=null)WindowCompat.getInsetsController(
+                window,window.decorView).show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+    DisposableEffect(activity,brightness) {
+        val window=activity?.window
+        val previous=window?.attributes?.screenBrightness ?: -1f
+        if(window!=null) {
+            val attrs=window.attributes
+            attrs.screenBrightness=if(brightness<0f) -1f else brightness.coerceIn(0.05f,1f)
+            window.attributes=attrs
+        }
+        onDispose {
+            if(window!=null) {
+                val attrs=window.attributes
+                attrs.screenBrightness=previous
+                window.attributes=attrs
+            }
+        }
+    }
     DisposableEffect(activity,rotationMode) {
         activity?.requestedOrientation=when(rotationMode) {
             "Portrait"->ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -651,6 +683,38 @@ private fun ReaderScreen(
     var swipe by remember {mutableStateOf(optionBoolean("swipeTurn",prefs.getBoolean("swipeTurn",true)))}
     var arrows by remember {mutableStateOf(optionBoolean("sideButtons",prefs.getBoolean("sideButtons",false)))}
     var chrome by remember {mutableStateOf(false)}
+    var focusMode by rememberSaveable(book.path) {mutableStateOf(false)}
+    var brightness by remember {mutableFloatStateOf(prefs.getFloat("readerBrightness",-1f))}
+    var smoothTurns by remember {
+        mutableStateOf(optionBoolean("smoothPageTurns",
+            prefs.getBoolean("smoothPageTurns",true)))
+    }
+    val lifecycleOwner=LocalLifecycleOwner.current
+    val readingClock=remember(book.path) {ReadingClock()}
+    var elapsedSeconds by remember(book.path) {mutableLongStateOf(0L)}
+    DisposableEffect(lifecycleOwner,readingClock) {
+        val observer=LifecycleEventObserver { _, event->
+            when(event) {
+                Lifecycle.Event.ON_RESUME->readingClock.resume(SystemClock.elapsedRealtime())
+                Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP->
+                    readingClock.pause(SystemClock.elapsedRealtime())
+                else->{}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        if(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
+            readingClock.resume(SystemClock.elapsedRealtime())
+        onDispose {
+            readingClock.pause(SystemClock.elapsedRealtime())
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+    LaunchedEffect(readingClock) {
+        while(true) {
+            elapsedSeconds=readingClock.elapsedSeconds(SystemClock.elapsedRealtime())
+            delay(1000L)
+        }
+    }
     var showSettings by remember {mutableStateOf(false)}
     var showChapters by remember {mutableStateOf(false)}
     var showReaderBookmarks by remember {mutableStateOf(false)}
@@ -777,7 +841,8 @@ private fun ReaderScreen(
             webView?.destroy()
         }
     }
-    Scaffold(contentWindowInsets=WindowInsets.safeDrawing,containerColor=paper) { padding->
+    Scaffold(contentWindowInsets=if(focusMode)WindowInsets(0,0,0,0)
+        else WindowInsets.safeDrawing,containerColor=paper) { padding->
         Box(Modifier.fillMaxSize().padding(padding).background(paper)) {
             if(loadError!=null) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
                 Text(loadError ?: "",color=textColor,modifier=Modifier.padding(24.dp))
@@ -1005,6 +1070,14 @@ private fun ReaderScreen(
                             modifier=Modifier.size(44.dp)) {
                             Icon(Icons.Default.Bookmarks,ui("Əlfəcinlərim"),tint=textColor)
                         }
+                        IconButton(onClick={
+                            focusMode=!focusMode
+                            if(focusMode)chrome=false
+                        },modifier=Modifier.size(40.dp)) {
+                            Icon(if(focusMode)Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                                ui(if(focusMode)"Focus rejimindən çıx" else "Focus rejimi"),
+                                tint=textColor)
+                        }
                         FilledTonalIconButton(onClick={showSettings=true},modifier=Modifier.size(48.dp)) {
                             Text(ui("Aa"),fontSize=18.sp,fontWeight=FontWeight.Bold)
                         }
@@ -1022,9 +1095,13 @@ private fun ReaderScreen(
                 Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(paper.copy(alpha=0.97f))
                     .padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
                     IconButton(onClick={turn(-1)}) {Icon(Icons.AutoMirrored.Filled.ArrowBack,ui("Əvvəlki"),tint=textColor)}
-                    Text(ui(if(isTextBook)"Fəsil "+(chapter+1)+"/"+chapterFiles.size
-                        else "Səhifə "+(chapter+1)+"/"+pageCount),
-                        modifier=Modifier.weight(1f),color=textColor,fontSize=13.sp)
+                    Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally) {
+                        Text(ui(if(isTextBook)"Fəsil "+(chapter+1)+"/"+chapterFiles.size
+                            else "Səhifə "+(chapter+1)+"/"+pageCount),
+                            color=textColor,fontSize=13.sp)
+                        Text("⏱ "+ReadingClock.display(elapsedSeconds),
+                            fontSize=11.sp,color=textColor.copy(alpha=0.72f))
+                    }
                     IconButton(onClick={turn(1)}) {Icon(Icons.AutoMirrored.Filled.ArrowForward,ui("Növbəti"),tint=textColor)}
                 }
             }
