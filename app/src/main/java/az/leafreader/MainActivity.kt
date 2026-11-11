@@ -529,11 +529,11 @@ class MainActivity : Activity() {
                 val max=(view.contentHeight*view.scale-view.height).toInt().coerceAtLeast(0)
                 val step=(view.height*0.86f).toInt().coerceAtLeast(1)
                 if(direction>0 && view.scrollY<max-8) {
-                    view.smoothScrollTo(0,(view.scrollY+step).coerceAtMost(max))
+                    view.scrollTo(0,(view.scrollY+step).coerceAtMost(max))
                     return
                 }
                 if(direction<0 && view.scrollY>8) {
-                    view.smoothScrollTo(0,(view.scrollY-step).coerceAtLeast(0))
+                    view.scrollTo(0,(view.scrollY-step).coerceAtLeast(0))
                     return
                 }
             }
