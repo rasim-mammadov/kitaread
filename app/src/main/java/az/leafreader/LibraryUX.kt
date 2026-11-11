@@ -48,6 +48,7 @@ object LibraryPalette {
 @Composable
 fun LibrarySettingsSheet(
     store:BookStore,appTheme:String,onTheme:(String)->Unit,
+    language:String,onLanguage:(String)->Unit,
     onExport:()->Unit,onImport:()->Unit,
     onRestore:(String)->Unit,onSort:(String)->Unit,onClose:()->Unit
 ) {
@@ -64,21 +65,44 @@ fun LibrarySettingsSheet(
                 if(section!="Settings")IconButton(onClick={section="Settings"}) {
                     Icon(Icons.Default.ArrowBack,"Geri")
                 }
-                Text(ui(section),fontSize=25.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+                Text(ui(if(section=="Language")"Dil" else section),fontSize=25.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
                 IconButton(onClick=onClose) {Icon(Icons.Default.Close,"Bağla")}
             }
             HorizontalDivider()
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                 .padding(vertical=12.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 if(section=="Settings") {
-                    listOf("Appearance" to "Qlobal və oxuma temaları",
-                        "Reading" to "Oxuma parametrləri",
-                        "Library" to "Sıralama və gizli kitablar",
-                        "Data & Backup" to "Export / Import",
-                        "About" to "Tətbiq məlumatları").forEach { (title,subtitle)->
-                        ListItem(headlineContent={Text(ui(title))},supportingContent={Text(ui(subtitle))},
+                    listOf(
+                        Triple("🎨","Appearance","Appearance"),
+                        Triple("📖","Reading","Reading"),
+                        Triple("🌐","Language","Language"),
+                        Triple("📚","Library","Library"),
+                        Triple("💾","Data & Backup","Data & Backup"),
+                        Triple("ℹ️","About","About")
+                    ).forEach { (emoji,title,_)->
+                        ListItem(
+                            leadingContent={Text(emoji,fontSize=23.sp)},
+                            headlineContent={Text(ui(if(title=="Language")"Dil" else title))},
                             trailingContent={Icon(Icons.Default.ChevronRight,null)},
                             modifier=Modifier.clickable {section=title})
+                        HorizontalDivider()
+                    }
+                }
+                if(section=="Language") {
+                    Text(ui("Kitabın öz dili dəyişdirilmir."),fontSize=13.sp,
+                        color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    listOf(
+                        Triple("🇦🇿","az","Azərbaycan dili"),
+                        Triple("🇷🇺","ru","Rus dili"),
+                        Triple("🇬🇧","en","İngilis dili")
+                    ).forEach {(emoji,code,label)->
+                        ListItem(
+                            leadingContent={Text(emoji,fontSize=23.sp)},
+                            headlineContent={Text(ui(label))},
+                            trailingContent={RadioButton(selected=language==code,
+                                onClick={onLanguage(code)})},
+                            modifier=Modifier.clickable {onLanguage(code)}
+                        )
                         HorizontalDivider()
                     }
                 }
@@ -165,7 +189,7 @@ fun LibrarySettingsSheet(
                 }
                 if(section=="About") {
                     Text(ui("Leaf Reader"),fontSize=22.sp,fontWeight=FontWeight.Bold)
-                    Text(ui("3.3.3 Preview · Offline EPUB / PDF / CBZ"))
+                    Text(ui("3.5 Preview · Offline EPUB / PDF / CBZ / Markdown"))
                 }
             }
         }
