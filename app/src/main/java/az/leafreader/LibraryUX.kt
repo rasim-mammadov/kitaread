@@ -192,8 +192,8 @@ fun LibrarySettingsSheet(
                     OutlinedButton(onClick=onImport,modifier=Modifier.fillMaxWidth()) {Text(ui("Import JSON"))}
                 }
                 if(section=="About") {
-                    Text(ui("Leaf Reader"),fontSize=22.sp,fontWeight=FontWeight.Bold)
-                    Text(ui("4.0 RC2 · Offline EPUB / PDF / CBZ / Markdown"))
+                    Text(ui("KitaRead"),fontSize=22.sp,fontWeight=FontWeight.Bold)
+                    Text(ui("4.1 Preview · Offline EPUB / PDF / CBZ / Markdown"))
                 }
             }
         }
