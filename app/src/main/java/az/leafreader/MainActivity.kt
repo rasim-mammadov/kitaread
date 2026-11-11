@@ -521,11 +521,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                             contentPadding=PaddingValues(bottom=96.dp),
                             horizontalArrangement=Arrangement.spacedBy(10.dp),
                             verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                            grouped.forEach { (heading,groupBooks)->
-                                if(false) item(span={GridItemSpan(maxLineSpan)}) {
-                                    Text(heading,fontWeight=FontWeight.Bold,fontSize=16.sp,
-                                        modifier=Modifier.padding(top=10.dp,bottom=2.dp))
-                                }
+                            grouped.forEach { (_,groupBooks)->
                                 gridItems(groupBooks,key={it.path}) { book->
                                     SmartGridBook(book,store,
                                         selected=book.path in selectedBooks,selecting=selecting,
@@ -537,11 +533,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         }
                     } else LazyColumn(contentPadding=PaddingValues(bottom=96.dp),
                         verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                        grouped.forEach { (heading,groupBooks)->
-                            if(false) item {
-                                Text(heading,fontWeight=FontWeight.Bold,fontSize=16.sp,
-                                    modifier=Modifier.padding(top=10.dp,bottom=2.dp))
-                            }
+                        grouped.forEach { (_,groupBooks)->
                             items(groupBooks,key={it.path}) { book->
                                 Row(verticalAlignment=Alignment.CenterVertically) {
                                     if(selecting) Checkbox(
