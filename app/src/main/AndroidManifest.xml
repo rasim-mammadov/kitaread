@@ -1,1 +1,30 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"><application android:label="Leaf Reader" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:usesCleartextTraffic="false"><activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity></application></manifest>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
+        android:label="Leaf Reader"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar"
+        android:usesCleartextTraffic="false">
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <intent-filter android:label="Leaf Reader">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="content"/>
+                <data android:scheme="file"/>
+                <data android:mimeType="application/epub+zip"/>
+                <data android:mimeType="application/pdf"/>
+                <data android:mimeType="application/x-cbz"/>
+                <data android:mimeType="application/vnd.comicbook+zip"/>
+            </intent-filter>
+            <intent-filter android:label="Leaf Reader">
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="application/epub+zip"/>
+                <data android:mimeType="application/pdf"/>
+                <data android:mimeType="application/x-cbz"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
