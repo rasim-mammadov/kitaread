@@ -24,6 +24,6 @@ jobs:
       - run: gradle :app:assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: LeafReader-3.0.1-EPUB-fix-debug-apk
+          name: LeafReader-3.0.2-EPUB-layout-fix-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
