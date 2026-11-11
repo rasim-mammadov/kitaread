@@ -247,6 +247,23 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
             Toast.makeText(context,UiLanguage.translate(e.message ?: "Kitab açıla bilmədi",store.setting().getString("language","az") ?: "az"),Toast.LENGTH_LONG).show()
         }
     }
+    var customCoverBookPath by remember {mutableStateOf<String?>(null)}
+    val customCoverPicker=rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()) {uri->
+        val path=customCoverBookPath
+        customCoverBookPath=null
+        if(uri!=null && path!=null)backupScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    CustomBookCover.apply(context,store,path,uri)
+                }
+                refreshLibrary()
+            }catch(e:Exception) {
+                Toast.makeText(context,e.message ?: "Üz qabığı dəyişdirilmədi",
+                    Toast.LENGTH_LONG).show()
+            }
+        }
+    }
     val filePicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri->
         if(uri!=null)backupScope.launch {
             try {
@@ -774,6 +791,18 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         }
                         MenuChoice("Kitab detalları və status",Icons.Default.Edit) {
                             detailsBook=book;menuBook=null
+                        }
+                        MenuChoice("Üz qabığını dəyiş",Icons.Default.Image) {
+                            customCoverBookPath=book.path
+                            menuBook=null
+                            customCoverPicker.launch("image/*")
+                        }
+                        if(store.find(book.path)?.optBoolean("customCover",false)==true) {
+                            MenuChoice("Orijinal üz qabığına qayıt",Icons.Default.Restore) {
+                                CustomBookCover.restore(store,book.path)
+                                refreshLibrary()
+                                menuBook=null
+                            }
                         }
                         MenuChoice("Kitabxanadan gizlət",Icons.Default.VisibilityOff) {
                             store.hideBook(book.path,true);refreshLibrary();menuBook=null
