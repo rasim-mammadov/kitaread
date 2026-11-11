@@ -817,7 +817,9 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
 }
 
 @Composable
-private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:()->Unit) {
+private fun LibraryCard(book:ReaderBook,store:BookStore,
+    textSize:Int,density:Int,pinned:Boolean,
+    onPin:()->Unit,onOpen:()->Unit,onMore:()->Unit) {
     val context=LocalContext.current
     val image=remember(book.cover) {
         if(book.cover.isNotBlank())BitmapFactory.decodeFile(File(context.filesDir,book.cover).absolutePath)
@@ -826,7 +828,7 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
     Card(onClick=onOpen,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(20.dp),
         colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),
         elevation=CardDefaults.cardElevation(defaultElevation=1.dp)) {
-        Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically) {
+        Row(Modifier.padding((8+density*3).dp),verticalAlignment=Alignment.CenterVertically) {
             Box(Modifier.size(width=78.dp,height=108.dp).clip(RoundedCornerShape(10.dp))
                 .background(Accent),contentAlignment=Alignment.Center) {
                 if(image!=null)Image(image.asImageBitmap(),null,Modifier.fillMaxSize(),
@@ -834,9 +836,9 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
                 else Icon(Icons.Default.MenuBook,null,Modifier.size(44.dp),
                     tint=Color.White)
             }
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text(book.title,fontWeight=FontWeight.SemiBold,fontSize=17.sp,
+            Spacer(Modifier.width((8+density*4).dp))
+            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy((4+density*2).dp)) {
+                Text(book.title,fontWeight=FontWeight.SemiBold,fontSize=textSize.sp,
                     color=MaterialTheme.colorScheme.onSurface,
                     maxLines=2,overflow=TextOverflow.Ellipsis)
                 val metadata=store.find(book.path)
@@ -855,7 +857,15 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
                 Text(ui(book.progress.toString()+"% oxunub"),fontSize=12.sp,
                     color=MaterialTheme.colorScheme.primary)
             }
-            IconButton(onClick=onMore) {Icon(Icons.Default.MoreVert,ui("Kitab ayarları"))}
+            Column {
+                IconButton(onClick=onPin) {
+                    Icon(if(pinned)Icons.Default.PushPin else Icons.Default.PushPin,
+                        ui(if(pinned)"Sabitləməni ləğv et" else "Kitabı sabitlə"),
+                        tint=if(pinned)MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.45f))
+                }
+                IconButton(onClick=onMore) {Icon(Icons.Default.MoreVert,ui("Kitab ayarları"))}
+            }
         }
     }
 }
