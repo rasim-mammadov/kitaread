@@ -303,7 +303,16 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 Spacer(Modifier.height(16.dp))
                                 Text("Burada hələ kitab yoxdur",fontSize=20.sp,fontWeight=FontWeight.SemiBold)
                                 Spacer(Modifier.height(8.dp))
-                                Text("EPUB, PDF və ya CBZ əlavə et",color=Gray)
+                                Text(if(books.isEmpty())"EPUB, PDF və ya CBZ əlavə et"
+                                    else "Axtarış və filtrlərə uyğun kitab tapılmadı",
+                                    color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                if(books.isNotEmpty()) {
+                                    TextButton(onClick={
+                                        search="";filter="Hamısı"
+                                        genreFilter=GenreCatalog.UNKNOWN
+                                        collectionFilter="";formatFilter="Hamısı"
+                                    }) {Text("Filtrləri sıfırla")}
+                                }
                             }
                         }
                     } else LazyColumn(contentPadding=PaddingValues(bottom=96.dp),
