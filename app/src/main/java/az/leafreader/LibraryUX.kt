@@ -51,7 +51,9 @@ fun LibrarySettingsSheet(
     language:String,onLanguage:(String)->Unit,
     onExport:()->Unit,onImport:()->Unit,
     onFullExport:()->Unit,onFullImport:()->Unit,
-    onRestore:(String)->Unit,onSort:(String)->Unit,onClose:()->Unit
+    onRestore:(String)->Unit,onSort:(String)->Unit,onClose:()->Unit,
+    libraryFontSize:Int,onLibraryFontSize:(Int)->Unit,
+    libraryDensity:Int,onLibraryDensity:(Int)->Unit
 ) {
     var section by remember {mutableStateOf("Settings")}
     val prefs=store.setting()
@@ -148,6 +150,23 @@ fun LibrarySettingsSheet(
                     }
                 }
                 if(section=="Library") {
+                    Text(ui("Kitabxana yazı ölçüsü")+": $libraryFontSize sp",
+                        fontWeight=FontWeight.SemiBold)
+                    Slider(value=libraryFontSize.toFloat(),onValueChange={value->
+                        val size=LibraryPersonalization.fontSize(value.toInt())
+                        onLibraryFontSize(size)
+                        prefs.edit().putInt("libraryFontSize",size).apply()
+                    },valueRange=11f..22f,steps=10)
+                    Text(ui("Kart sıxlığı"),fontWeight=FontWeight.SemiBold)
+                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        listOf(0 to "Sıx",1 to "Normal",2 to "Rahat").forEach {(value,label)->
+                            FilterChip(selected=libraryDensity==value,onClick={
+                                onLibraryDensity(value)
+                                prefs.edit().putInt("libraryDensity",value).apply()
+                            },label={Text(ui(label))})
+                        }
+                    }
+                    HorizontalDivider()
                     Text(ui("Sıralama"),fontWeight=FontWeight.SemiBold)
                     listOf("Son oxunanlar","Əlavə edilmə tarixi","A–Z","Z–A","Progress")
                         .forEach {value->
@@ -193,7 +212,7 @@ fun LibrarySettingsSheet(
                 }
                 if(section=="About") {
                     Text(ui("KitaRead"),fontSize=22.sp,fontWeight=FontWeight.Bold)
-                    Text(ui("4.1 Preview · Offline EPUB / PDF / CBZ / Markdown"))
+                    Text(ui("4.3.1 Preview · Offline EPUB / PDF / CBZ / Markdown"))
                 }
             }
         }
