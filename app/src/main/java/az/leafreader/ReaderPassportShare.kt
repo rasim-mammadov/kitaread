@@ -16,6 +16,9 @@ object ReaderPassportShare {
         val image=Bitmap.createBitmap(1080,675,Bitmap.Config.ARGB_8888)
         try {
             val canvas=Canvas(image)
+            val language=context.getSharedPreferences("leaf_v3_options",Context.MODE_PRIVATE)
+                .getString("language","az") ?: "az"
+            fun tr(value:String)=UiLanguage.translate(value,language)
             val paint=Paint(Paint.ANTI_ALIAS_FLAG)
             canvas.drawColor(Color.rgb(16,45,54))
             paint.color=Color.rgb(35,75,83)
@@ -26,7 +29,7 @@ object ReaderPassportShare {
             canvas.drawText("LEAF READER",95f,129f,paint)
             paint.textSize=27f
             paint.isFakeBoldText=false
-            canvas.drawText("READER PASSPORT",95f,173f,paint)
+            canvas.drawText(tr("Oxucu pasportu"),95f,173f,paint)
             paint.color=Color.rgb(255,255,255)
             paint.textSize=54f
             paint.isFakeBoldText=true
@@ -35,9 +38,9 @@ object ReaderPassportShare {
             paint.color=Color.rgb(158,207,193)
             paint.textSize=31f
             paint.isFakeBoldText=false
-            canvas.drawText("Books",95f,408f,paint)
-            canvas.drawText("Active days",410f,408f,paint)
-            canvas.drawText("Achievements",755f,408f,paint)
+            canvas.drawText(tr("Kitablar"),95f,408f,paint)
+            canvas.drawText(tr("Aktiv günlər"),410f,408f,paint)
+            canvas.drawText(tr("Nailiyyətlər"),755f,408f,paint)
             paint.color=Color.WHITE
             paint.isFakeBoldText=true
             paint.textSize=68f
@@ -47,7 +50,7 @@ object ReaderPassportShare {
             paint.isFakeBoldText=false
             paint.textSize=25f
             paint.color=Color.rgb(158,207,193)
-            canvas.drawText("Offline reading journey",95f,568f,paint)
+            canvas.drawText(tr("İnternetsiz oxu səyahəti"),95f,568f,paint)
             val dir=File(context.cacheDir,"shared_passport").apply {mkdirs()}
             val file=File(dir,"leaf-reader-passport.png")
             file.outputStream().use {
@@ -62,7 +65,7 @@ object ReaderPassportShare {
                 clipData=android.content.ClipData.newUri(context.contentResolver,
                     "Reader passport",uri)
             }
-            context.startActivity(Intent.createChooser(intent,"Reader passport"))
+            context.startActivity(Intent.createChooser(intent,tr("Oxucu pasportu")))
         }finally {image.recycle()}
     }
 }
