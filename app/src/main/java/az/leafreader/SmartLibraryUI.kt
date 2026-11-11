@@ -58,7 +58,7 @@ fun SmartGridBook(
                         contentScale=ContentScale.Crop)
                 } else Icon(Icons.Default.MenuBook,null,Modifier.size(50.dp),
                     tint=MaterialTheme.colorScheme.primary)
-                if(selecting) Checkbox(checked=selected,onCheckedChange={onSelect},
+                if(selecting) Checkbox(checked=selected,onCheckedChange={onSelect()},
                     modifier=Modifier.align(Alignment.TopEnd))
             }
             Text(book.title,maxLines=2,overflow=TextOverflow.Ellipsis,
