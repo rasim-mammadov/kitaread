@@ -75,7 +75,6 @@ fun LibrarySettingsSheet(
                 if(section=="Settings") {
                     listOf(
                         Triple("🎨","Appearance","Appearance"),
-                        Triple("📖","Reading","Reading"),
                         Triple("🌐","Language","Language"),
                         Triple("📚","Library","Library"),
                         Triple("💾","Data & Backup","Data & Backup"),
@@ -192,14 +191,9 @@ fun LibrarySettingsSheet(
                     Button(onClick=onExport,modifier=Modifier.fillMaxWidth()) {Text(ui("Export JSON"))}
                     OutlinedButton(onClick=onImport,modifier=Modifier.fillMaxWidth()) {Text(ui("Import JSON"))}
                 }
-                if(section=="Reading") {
-                    Text(ui("Şrift, sətirarası məsafə, ekran istiqaməti və zoom kitabın "+
-                        "daxilindəki Aa menyusundan dəyişdirilir."))
-                    Text(ui("Qlobal Reader Theme seçimi Appearance bölməsindədir."))
-                }
                 if(section=="About") {
                     Text(ui("Leaf Reader"),fontSize=22.sp,fontWeight=FontWeight.Bold)
-                    Text(ui("4.0 Release Candidate · Offline EPUB / PDF / CBZ / Markdown"))
+                    Text(ui("4.0 RC2 · Offline EPUB / PDF / CBZ / Markdown"))
                 }
             }
         }
