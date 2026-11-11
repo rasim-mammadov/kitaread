@@ -39,6 +39,7 @@ class MainActivity : Activity() {
     private var activeReaderView: View? = null
     private var headerView: View? = null
     private var footerView: View? = null
+    private var sideButtons: View? = null
     private var readerBarsVisible = true
     private var readingSince = 0L
     private fun accountReadingTime() {
@@ -53,16 +54,16 @@ class MainActivity : Activity() {
     }
     private val settings by lazy { getSharedPreferences("reader_settings", MODE_PRIVATE) }
     private fun setFullScreen(enabled: Boolean) {
+        // Respect Android status and gesture bar safe areas even inside a book.
         @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = if(enabled)
-            (View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_STABLE)
-            else 0
+        window.decorView.systemUiVisibility = 0
         if (::root.isInitialized && Build.VERSION.SDK_INT >= 35) root.requestApplyInsets()
     }
     private fun toggleBars() {
         readerBarsVisible = !readerBarsVisible
         headerView?.visibility = if(readerBarsVisible) View.VISIBLE else View.GONE
         footerView?.visibility = if(readerBarsVisible) View.VISIBLE else View.GONE
+        sideButtons?.visibility = if(settings.getBoolean("sideButtons",true)) View.VISIBLE else View.GONE
     }
     private fun markFinished(book: JSONObject) {
         book.put("status", "Bitirilib")
@@ -128,11 +129,7 @@ class MainActivity : Activity() {
             if (Build.VERSION.SDK_INT >= 35) {
                 setOnApplyWindowInsetsListener { view, insets ->
                     val safe = insets.getInsets(WindowInsets.Type.systemBars())
-                    if (current == null) {
-                        view.setPadding(safe.left, safe.top, safe.right, safe.bottom)
-                    } else {
-                        view.setPadding(0, 0, 0, 0)
-                    }
+                    view.setPadding(safe.left, safe.top, safe.right, safe.bottom)
                     insets
                 }
             }
@@ -485,7 +482,9 @@ class MainActivity : Activity() {
             if(b.optString("status")!="Bitirilib")b.put("status","Oxunur")
             bar(b.getString("title"),true)
             setFullScreen(true)
+            (headerView as? LinearLayout)?.addView(action("Aa ⚙") { readerOptions() })
             readerContainer=FrameLayout(this); root.addView(readerContainer,LinearLayout.LayoutParams(-1,0,1f))
+            attachSideButtons()
             val foot=LinearLayout(this).apply {
                 orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; setPadding(8,4,8,8)
             }
@@ -644,7 +643,7 @@ class MainActivity : Activity() {
         accountReadingTime()
         flushPosition()
         setFullScreen(false)
-        headerView=null;footerView=null
+        headerView=null;footerView=null;sideButtons=null
         activeReaderView = null
         web?.destroy(); web = null
         readerBitmap?.recycle(); readerBitmap = null
