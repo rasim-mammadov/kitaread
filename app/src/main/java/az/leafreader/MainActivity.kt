@@ -969,6 +969,20 @@ private fun ReaderScreen(
                     }
                 }
                 Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                    Text("Qlobal temanı izlə",modifier=Modifier.weight(1f),
+                        fontWeight=FontWeight.SemiBold)
+                    Switch(checked=readerFollowsApp,onCheckedChange={follow->
+                        readerFollowsApp=follow
+                        prefs.edit().putBoolean("readerFollowsApp",follow).apply()
+                        theme=if(follow) prefs.getString("theme","Sepia") ?: "Sepia"
+                              else prefs.getString("readerTheme","Sepia") ?: "Sepia"
+                    })
+                }
+                Text(if(readerFollowsApp)
+                    "Kitabxanadakı tema oxuyucuda da tətbiq edilir."
+                    else "Kitab üçün ayrıca tema seçilib.",fontSize=12.sp,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Oxuma teması · 10 hazır seçim",fontWeight=FontWeight.SemiBold)
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement=Arrangement.spacedBy(8.dp)) {
