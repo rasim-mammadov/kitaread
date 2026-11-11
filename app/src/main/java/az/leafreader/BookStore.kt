@@ -48,6 +48,39 @@ class BookStore(private val context: Context) {
         items.forEach {arr.put(it)}
         prefs.edit().putString("items",arr.toString()).apply()
     }
+    /** One atomic metadata update for reversible bulk operations. Never deletes book bytes. */
+    fun bulkHide(paths:Set<String>):Int {
+        if(paths.isEmpty())return 0
+        val items=records()
+        var modified=0
+        items.forEach {item->
+            if(item.optString("path") in paths && !item.optBoolean("hidden",false)) {
+                item.put("hidden",true)
+                modified++
+            }
+        }
+        if(modified>0)persist(items)
+        return modified
+    }
+
+    fun bulkAddToCollection(paths:Set<String>,name:String):Int {
+        val label=name.trim().take(50)
+        if(label.isBlank() || paths.isEmpty())return 0
+        val items=records()
+        var modified=0
+        items.forEach {item->
+            if(item.optString("path") !in paths)return@forEach
+            val entries=item.optJSONArray("collections") ?:JSONArray()
+            if((0 until entries.length()).none {entries.optString(it)==label}) {
+                entries.put(label)
+                item.put("collections",entries)
+                modified++
+            }
+        }
+        if(modified>0)persist(items)
+        return modified
+    }
+
     fun hideBook(path:String,hidden:Boolean) {
         change(path) {it.put("hidden",hidden)}
     }
