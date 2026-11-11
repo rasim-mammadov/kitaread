@@ -258,7 +258,7 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
         try {
             if(book.type=="epub") {
                 val extracted=withContext(Dispatchers.IO){store.extractChapters(book.path)}
-                chapterLabels=withContext(Dispatchers.IO){store.chapterTitles(extracted)}
+                chapterLabels=withContext(Dispatchers.IO){store.chapterTitles(book.path,extracted)}
                 chapterFiles=extracted
             }
             else pageCount=withContext(Dispatchers.IO){ReaderMedia.count(bookFile,book.type)}
