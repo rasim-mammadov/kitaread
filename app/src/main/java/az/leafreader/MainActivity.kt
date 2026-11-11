@@ -708,60 +708,112 @@ class MainActivity : Activity() {
         val fraction = book.optDouble("scrollFraction", 0.0)
         when (book.optString("type")) {
             "epub" -> {
-                val w = object : WebView(this) {
-                    override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
-                        super.onScrollChanged(l, t, oldl, oldt)
-                        if (activeReaderView === this) {
-                            val max = (contentHeight * scale - height).roundToInt().coerceAtLeast(0)
-                            recordPosition(scrollFraction(this, max))
+                epubReady=false
+                epubPageCount=1
+                epubPageIndex=0
+                val w=EpubChapterView(this) { view ->
+                    if(activeReaderView === view && !restoringPosition && epubReady) {
+                        if(pagedEpub())onEpubScrolled(view)
+                        else {
+                            val max=(view.contentHeight*view.scale-view.height).roundToInt().coerceAtLeast(0)
+                            recordPosition(scrollFraction(view,max))
                         }
                     }
                 }.apply {
-                    settings.javaScriptEnabled = false
-                    settings.allowFileAccess = true
-                    settings.allowContentAccess = false
-                    settings.builtInZoomControls = false
+                    settings.javaScriptEnabled=false
+                    settings.allowFileAccess=true
+                    settings.allowFileAccessFromFileURLs=false
+                    settings.allowUniversalAccessFromFileURLs=false
+                    settings.allowContentAccess=false
+                    settings.builtInZoomControls=false
+                    isHorizontalScrollBarEnabled=false
+                    isVerticalScrollBarEnabled=!pagedEpub()
                     setBackgroundColor(Color.WHITE)
                 }
-                web = w; activeReaderView = w; readerContainer?.addView(w)
-                val file = epubChapters[page]
-                w.webViewClient = object : WebViewClient() {
-                    override fun onPageFinished(view: WebView, url: String?) {
-                        if (activeReaderView === view) restoreFraction(view, {
-                            (view.contentHeight * view.scale - view.height).roundToInt()
-                        }, fraction)
+                web=w;activeReaderView=w
+                readerContainer?.addView(w)
+                val file=epubChapters[page]
+                w.webViewClient=object:WebViewClient() {
+                    override fun onPageFinished(view:WebView,url:String?) {
+                        if(activeReaderView!==view)return
+                        // Recalculate after fonts and images settle; preserve chapter ratio.
+                        intArrayOf(220,650).forEachIndexed { index,delay ->
+                            view.postDelayed({
+                                if(activeReaderView!==view)return@postDelayed
+                                if(pagedEpub()) {
+                                    val width=view.width.coerceAtLeast(1)
+                                    val max=epubMaxX(view)
+                                    epubPageCount=max(1,(max+width-1)/width+1)
+                                    epubPageIndex=(fraction*(epubPageCount-1)).roundToInt()
+                                        .coerceIn(0,epubPageCount-1)
+                                    view.scrollTo((epubPageIndex*width).coerceAtMost(max),0)
+                                    if(index==1) {
+                                        restoringPosition=false;epubReady=true
+                                        onEpubScrolled(view)
+                                        recordPosition(if(epubPageCount<=1)0.0 else
+                                            epubPageIndex.toDouble()/(epubPageCount-1),true)
+                                    }
+                                } else if(index==1) {
+                                    val maxScroll=(view.contentHeight*view.scale-view.height)
+                                        .roundToInt().coerceAtLeast(0)
+                                    view.scrollTo(0,(fraction*maxScroll).roundToInt())
+                                    restoringPosition=false;epubReady=true
+                                    recordPosition(scrollFraction(view,maxScroll),true)
+                                }
+                                updateReaderProgress()
+                            },delay.toLong())
+                        }
                     }
-                    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
+                    override fun shouldOverrideUrlLoading(view:WebView,request:WebResourceRequest):Boolean=true
+                    override fun shouldInterceptRequest(view:WebView,request:WebResourceRequest):WebResourceResponse? {
+                        val scheme=request.url.scheme?.lowercase()
+                        return if(scheme=="http"||scheme=="https")
+                            WebResourceResponse("text/plain","UTF-8",java.io.ByteArrayInputStream(ByteArray(0)))
+                        else super.shouldInterceptRequest(view,request)
+                    }
                 }
-                var touchDownX=0f
-                var touchDownY=0f
-                w.setOnTouchListener { _,evt ->
-                    when(evt.actionMasked) {
-                        MotionEvent.ACTION_DOWN -> {touchDownX=evt.x;touchDownY=evt.y}
+                var touchDownX=0f;var touchDownY=0f
+                w.setOnTouchListener { _,event ->
+                    when(event.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> {touchDownX=event.x;touchDownY=event.y}
                         MotionEvent.ACTION_UP -> {
-                            val dx=evt.x-touchDownX
-                            val dy=evt.y-touchDownY
+                            val dx=event.x-touchDownX
+                            val dy=event.y-touchDownY
                             if(settings.getBoolean("swipeTurn",false) &&
-                               kotlin.math.abs(dx)>dp(90) && kotlin.math.abs(dx)>kotlin.math.abs(dy)*1.4f) {
+                                abs(dx)>dp(75) && abs(dx)>abs(dy)*1.4f) {
                                 readerTurn(if(dx<0)1 else -1)
-                            } else if(kotlin.math.abs(dx)<dp(8) && kotlin.math.abs(dy)<dp(8)) {
-                                toggleBars()
+                                return@setOnTouchListener true
                             }
+                            if(abs(dx)<dp(8) && abs(dy)<dp(8))toggleBars()
                         }
                     }
                     false
                 }
                 val theme=settings.getString("theme","Light") ?: "Light"
-                val background=when(theme) {"Dark"->"#171B22";"AMOLED"->"#000000";"Sepia"->"#F2E6CF";else->"#FFFFFF"}
+                val background=when(theme) {
+                    "Dark"->"#171B22";"AMOLED"->"#000000";"Sepia"->"#F2E6CF"
+                    else->"#FFFFFF"
+                }
                 val foreground=if(theme in listOf("Dark","AMOLED"))"#F5F5F5" else "#292F30"
                 val fontSize=settings.getInt("fontSize",18)
-                val css="<style>body{background:"+background+" !important;color:"+foreground+
-                    " !important;font-size:"+fontSize+"px !important;line-height:"+ (settings.getInt("lineSpacing",160)/100.0) +" !important;"+
-                    "margin:0 !important;padding:18px !important;box-sizing:border-box}"+
-                    "img,svg{max-width:100% !important;height:auto !important}</style>"
+                val lineHeight=settings.getInt("lineSpacing",160)/100.0
+                val columns=if(pagedEpub()) {
+                    "html{height:100%!important;width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;}"+
+                    "body{width:100vw!important;height:100vh!important;column-width:calc(100vw - 36px)!important;"+
+                    "column-gap:36px!important;column-fill:auto!important;overflow:visible!important;}"
+                } else "html{overflow-x:hidden!important;overflow-y:auto!important;}body{width:100%!important;}"
+                val css="<meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0,user-scalable=no\"/>"+
+                    "<style>html{margin:0!important;padding:0!important;}"+
+                    "body{background:"+background+"!important;color:"+foreground+"!important;"+
+                    "font-size:"+fontSize+"px!important;line-height:"+lineHeight+"!important;"+
+                    "margin:0!important;padding:18px!important;box-sizing:border-box!important;}"+
+                    "img,svg{max-width:100%!important;max-height:85vh!important;height:auto!important;}"+
+                    columns+"</style>"
                 val original=file.readText(Charsets.UTF_8)
-                val decorated=original.replace("</head>",css+"</head>",ignoreCase=true)
-                w.setBackgroundColor(android.graphics.Color.parseColor(background))
+                val decorated=if(original.contains("</head>",true))
+                    original.replace("</head>",css+"</head>",ignoreCase=true)
+                else css+original
+                w.setBackgroundColor(Color.parseColor(background))
                 w.loadDataWithBaseURL(file.parentFile!!.toURI().toString(),
                     decorated,"application/xhtml+xml","UTF-8",null)
             }
