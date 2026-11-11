@@ -108,6 +108,10 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker) {
         libraryVersion++
     }
     var showDashboard by remember {mutableStateOf(false)}
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {store.enrichLegacyEpub()}
+        refreshLibrary()
+    }
     val filePicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri->
         if(uri!=null) try {
             store.import(uri)
@@ -325,8 +329,15 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 Text(book.title,fontWeight=FontWeight.SemiBold,fontSize=17.sp,
                     maxLines=2,overflow=TextOverflow.Ellipsis)
-                Text(book.status+"  •  "+book.type.uppercase(),
-                    color=Gray,fontSize=12.sp)
+                val metadata=remember(book.path) {store.find(book.path)}
+                val author=metadata?.optString("author").orEmpty()
+                val genre=metadata?.optString("genre",GenreCatalog.UNKNOWN).orEmpty()
+                if(author.isNotBlank()) Text(author,color=Gray,fontSize=12.sp,
+                    maxLines=1,overflow=TextOverflow.Ellipsis)
+                Text(book.status+"  •  "+book.type.uppercase()+
+                    (if(genre.isNotBlank() && genre!=GenreCatalog.UNKNOWN)"  •  $genre" else ""),
+                    color=Gray,fontSize=12.sp,maxLines=1,
+                    overflow=TextOverflow.Ellipsis)
                 LinearProgressIndicator(progress={book.progress/100f},
                     modifier=Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(8.dp)),
                     color=Accent,trackColor=Space)
