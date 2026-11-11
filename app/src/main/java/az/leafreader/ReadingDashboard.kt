@@ -109,6 +109,32 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                     shape=RoundedCornerShape(22.dp)) {
                     Column(Modifier.fillMaxWidth().padding(18.dp),
                         verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                        Text("Son 6 ay · Bitirilmiş kitablar",fontSize=18.sp,
+                            fontWeight=FontWeight.SemiBold,color=TextInk)
+                        val maxCount=(overview.completedMonthly.maxOfOrNull {it.second} ?: 0).coerceAtLeast(1)
+                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),
+                            verticalAlignment=Alignment.Bottom) {
+                            overview.completedMonthly.forEach {entry->
+                                Column(Modifier.weight(1f),
+                                    horizontalAlignment=Alignment.CenterHorizontally) {
+                                    Text(entry.second.toString(),fontSize=11.sp,color=Forest)
+                                    Spacer(Modifier.height(5.dp))
+                                    Box(Modifier.fillMaxWidth().height(
+                                        (9f+75f*entry.second/maxCount).dp)
+                                        .background(if(entry.second>0)Forest else Color(0xFFE7ECE7),
+                                            RoundedCornerShape(topStart=7.dp,topEnd=7.dp)))
+                                    Text(entry.first,fontSize=10.sp,color=Color.Gray)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            item {
+                Card(colors=CardDefaults.cardColors(containerColor=Color.White),
+                    shape=RoundedCornerShape(22.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(18.dp),
+                        verticalArrangement=Arrangement.spacedBy(12.dp)) {
                         Text("Kitabxana tərkibi",fontSize=18.sp,
                             fontWeight=FontWeight.SemiBold,color=TextInk)
                         LibraryMeter("EPUB",overview.epubBooks,overview.totalBooks)
