@@ -269,7 +269,30 @@ object UiLanguage {
         "Sistem parlaqlığı" to Pair("Системная яркость","System brightness"),
         "Fərdi parlaqlıq" to Pair("Своя яркость","Custom brightness"),
         "Oxuma sessiyası" to Pair("Сеанс чтения","Reading session"),
-        "Tam ekran" to Pair("Полный экран","Fullscreen")
+        "Tam ekran" to Pair("Полный экран","Fullscreen"),
+        "Görünüşü dəyiş" to Pair("Изменить вид","Change layout"),
+        "Qruplaşdırma yoxdur" to Pair("Без группировки","No grouping"),
+        "Müəllif üzrə" to Pair("По автору","By author"),
+        "Seriya üzrə" to Pair("По серии","By series"),
+        "Seç" to Pair("Выбрать","Select"),
+        "Hamısını seç" to Pair("Выбрать все","Select all"),
+        "Seçilmiş kitablar" to Pair("Выбранные книги","Selected books"),
+        "Kolleksiyaya əlavə et" to Pair("Добавить в коллекцию","Add to collection"),
+        "Gizlət" to Pair("Скрыть","Hide"),
+        "Kitabları gizlət?" to Pair("Скрыть книги?","Hide books?"),
+        "Fayllar silinmir. Kitabları Parametrlərdən bərpa etmək olar." to Pair("Файлы не удаляются. Книги можно восстановить в настройках.","Files are not deleted. Books can be restored in Settings."),
+        "Kolleksiya adı" to Pair("Название коллекции","Collection name"),
+        "Mövcud kolleksiyalar" to Pair("Существующие коллекции","Existing collections"),
+        "Dublikatlar" to Pair("Дубликаты","Duplicates"),
+        "Dublikat kitablar" to Pair("Дубликаты книг","Duplicate books"),
+        "Dublikat tapılmadı" to Pair("Дубликатов не найдено","No duplicates found"),
+        "Dublikatlar yoxlanılmadı" to Pair("Не удалось проверить дубликаты","Could not scan duplicates"),
+        "Yalnız eyni fayl məzmunu yoxlanılır." to Pair("Проверяются только файлы с одинаковым содержимым.","Only files with identical content are matched."),
+        "nüsxə" to Pair("копии","copies"),
+        "Ətraflı" to Pair("Подробнее","Details"),
+        "Seriya" to Pair("Серия","Series"),
+        "Ağıllı axtarış" to Pair("Умный поиск","Smart search"),
+        "Kitab, müəllif, seriya, janr, kolleksiya axtar..." to Pair("Поиск книги, автора, серии, жанра, коллекции...","Search title, author, series, genre, collection...")
     )
     fun translate(text:String,language:String):String {
         if(language=="az")return when(text) {
