@@ -242,7 +242,22 @@ object UiLanguage {
         "Bu əməliyyat geri qaytarıla bilməz." to Pair("Это действие необратимо.","This cannot be undone."),
         "Oxuma mövqeyi saxlanıldı" to Pair("Позиция чтения сохранена","Reading position saved"),
         "Kitabxanadakı tema oxuyucuda da tətbiq edilir." to Pair("Тема библиотеки применяется в читалке.","Reader follows the library theme."),
-        "Şrift, sətirarası məsafə, ekran istiqaməti və zoom kitabın daxilindəki Aa menyusundan dəyişdirilir." to Pair("Шрифт, интервал, ориентация и масштаб меняются в меню Aa при чтении.","Font, spacing, orientation and zoom are adjusted in the reader's Aa menu.")
+        "Şrift, sətirarası məsafə, ekran istiqaməti və zoom kitabın daxilindəki Aa menyusundan dəyişdirilir." to Pair("Шрифт, интервал, ориентация и масштаб меняются в меню Aa при чтении.","Font, spacing, orientation and zoom are adjusted in the reader's Aa menu."),
+        "Əlfəcin əlavə et və ya sil" to Pair("Добавить или удалить закладку","Add or remove bookmark"),
+        "Əlfəcini sil" to Pair("Удалить закладку","Remove bookmark"),
+        "Kolleksiyadan çıxar" to Pair("Убрать из коллекции","Remove from collection"),
+        "Qeydi sil" to Pair("Удалить заметку","Delete note"),
+        "Kitab açıla bilmədi" to Pair("Не удалось открыть книгу","Could not open book"),
+        "Fayl açılmadı" to Pair("Не удалось открыть файл","Could not open file"),
+        "JSON metadata backup saxlanıldı" to Pair("Резервная копия метаданных JSON сохранена","JSON metadata backup saved"),
+        "Backup xətası" to Pair("Ошибка резервного копирования","Backup error"),
+        "Import xətası" to Pair("Ошибка импорта","Import error"),
+        "Kitab silinmədi" to Pair("Не удалось удалить книгу","Could not delete book"),
+        "Kitab faylı, əlfəcinlər, oxuma tarixçəsi və qeydləri silinəcək. Bu əməliyyat geri qaytarıla bilməz." to Pair("Файл книги, закладки, история чтения и заметки будут удалены. Это действие необратимо.","The book file, bookmarks, reading history and notes will be deleted. This cannot be undone."),
+        "Kitab qeydini kitabxanadan çıxaracağıq. Orijinal fayl tətbiqin saxlamasında qalacaq, amma siyahıda görünməyəcək." to Pair("Запись исчезнет из библиотеки, но исходный файл останется в памяти приложения.","The library entry will be removed, but the original file remains in app storage."),
+        "Ən azı 2 simvol daxil et" to Pair("Введите минимум 2 символа","Enter at least 2 characters"),
+        "Görünür" to Pair("Видно","Visible"),
+        "3.5 Preview · Offline EPUB / PDF / CBZ / Markdown" to Pair("Версия 3.5 · Без интернета · EPUB / PDF / CBZ / Markdown","3.5 Preview · Offline EPUB / PDF / CBZ / Markdown")
     )
     fun translate(text:String,language:String):String {
         if(language=="az")return when(text) {
@@ -253,6 +268,18 @@ object UiLanguage {
             "Data & Backup"->"Məlumatlar və ehtiyat nüsxə"
             "About"->"Haqqında"
             "Continuous scroll"->"Davamlı sürüşdürmə"
+            "Swipe ilə səhifə çevirmə"->"Sürüşdürərək səhifə çevirmə"
+            "Export JSON"->"JSON ixrac et"
+            "Import JSON"->"JSON idxal et"
+            "Export / Import"->"İxrac / İdxal"
+            "App Theme — bütün ekranlar"->"Tətbiq teması — bütün ekranlar"
+            "Reader Theme tətbiq temasını izləsin"->"Oxuyucu tətbiqin temasını izləsin"
+            "Qlobal Reader Theme seçimi Appearance bölməsindədir."->
+                "Oxuyucunun ümumi temasını Görünüş bölməsindən seç."
+            "3.5 Preview · Offline EPUB / PDF / CBZ / Markdown"->
+                "3.5 İlkin versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
+            "3.3.3 Preview · Offline EPUB / PDF / CBZ"->
+                "3.5 İlkin versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
             "Progress"->"İrəliləyiş"
             "Fit to Width"->"Enə uyğunlaşdır"
             "Dark"->"Qaranlıq"
