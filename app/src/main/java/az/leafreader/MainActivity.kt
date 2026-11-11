@@ -41,6 +41,10 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -136,6 +140,29 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
     var showSettingsHome by remember {mutableStateOf(false)}
     var showAdvancedFilters by remember {mutableStateOf(false)}
     var showSearch by remember {mutableStateOf(false)}
+    var layoutMode by remember {
+        mutableStateOf(store.setting().getString("libraryLayout","list") ?: "list")
+    }
+    var groupMode by remember {
+        mutableStateOf(store.setting().getString("libraryGroup","none") ?: "none")
+    }
+    var showGroupMenu by remember {mutableStateOf(false)}
+    var selecting by remember {mutableStateOf(false)}
+    var selectedBooks by remember {mutableStateOf<Set<String>>(emptySet())}
+    var showBulkHideConfirm by remember {mutableStateOf(false)}
+    var showBulkCollection by remember {mutableStateOf(false)}
+    var bulkCollectionName by remember {mutableStateOf("")}
+    var showDuplicates by remember {mutableStateOf(false)}
+    var duplicateGroups by remember {mutableStateOf<List<List<String>>>(emptyList())}
+    var duplicateScanError by remember {mutableStateOf<String?>(null)}
+    var duplicatesScanning by remember {mutableStateOf(false)}
+    fun toggleSelection(path:String) {
+        selectedBooks=if(path in selectedBooks)selectedBooks-path else selectedBooks+path
+    }
+    fun stopSelection() {
+        selectedBooks=emptySet()
+        selecting=false
+    }
     var showSortMenu by remember {mutableStateOf(false)}
     var showExitConfirmation by remember {mutableStateOf(false)}
     var deleteBook by remember {mutableStateOf<ReaderBook?>(null)}
@@ -173,6 +200,10 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         when {
             showExitConfirmation ->showExitConfirmation=false
             showSettingsHome ->{showSettingsHome=false;refreshLibrary()}
+            showBulkCollection ->showBulkCollection=false
+            showBulkHideConfirm ->showBulkHideConfirm=false
+            showDuplicates ->showDuplicates=false
+            selecting ->stopSelection()
             showAdvancedFilters ->showAdvancedFilters=false
             showGlobalBookmarks ->showGlobalBookmarks=false
             showDashboard ->showDashboard=false
@@ -181,6 +212,20 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         }
     }
     var showThemeGallery by remember {mutableStateOf(false)}
+    LaunchedEffect(showDuplicates,libraryVersion) {
+        if(showDuplicates) {
+            duplicatesScanning=true
+            duplicateScanError=null
+            try {
+                duplicateGroups=withContext(Dispatchers.IO) {
+                    SmartLibrary.exactDuplicates(context.filesDir,store.books())
+                }
+            } catch(e:Exception) {
+                duplicateScanError=e.message ?: "Dublikatlar yoxlanılmadı"
+                duplicateGroups=emptyList()
+            } finally {duplicatesScanning=false}
+        }
+    }
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {store.enrichLegacyEpub()}
         refreshLibrary()
@@ -243,6 +288,44 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                             }
                             IconButton(onClick={showSettingsHome=true}) {
                                 Icon(Icons.Default.Settings,ui("Settings"))
+                            }
+                        }
+                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                            IconButton(onClick={
+                                layoutMode=if(layoutMode=="list")"grid" else "list"
+                                store.setting().edit().putString("libraryLayout",layoutMode).apply()
+                            }) {
+                                Icon(if(layoutMode=="list")Icons.Default.GridView
+                                    else Icons.Default.ViewList,ui("Görünüşü dəyiş"))
+                            }
+                            Box {
+                                TextButton(onClick={showGroupMenu=true}) {
+                                    Icon(Icons.Default.AccountTree,null,Modifier.size(17.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(ui(when(groupMode) {
+                                        "author"->"Müəllif üzrə"
+                                        "series"->"Seriya üzrə"
+                                        else->"Qruplaşdırma yoxdur"
+                                    }),fontSize=12.sp)
+                                }
+                                DropdownMenu(expanded=showGroupMenu,onDismissRequest={showGroupMenu=false}) {
+                                    listOf("none" to "Qruplaşdırma yoxdur",
+                                        "author" to "Müəllif üzrə",
+                                        "series" to "Seriya üzrə").forEach { (value,label)->
+                                        DropdownMenuItem(text={Text(ui(label))},onClick={
+                                            groupMode=value
+                                            store.setting().edit().putString("libraryGroup",value).apply()
+                                            showGroupMenu=false
+                                        })
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.weight(1f))
+                            TextButton(onClick={
+                                if(selecting) stopSelection() else selecting=true
+                            }) {Text(ui(if(selecting)"Ləğv et" else "Seç"))}
+                            IconButton(onClick={showDuplicates=true}) {
+                                Icon(Icons.Default.ContentCopy,ui("Dublikatlar"))
                             }
                         }
                         Row(Modifier.fillMaxWidth(),
@@ -337,8 +420,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         (formatFilter=="Hamısı" ||
                             (formatFilter=="MD" && book.type in setOf("md","markdown")) ||
                             book.type.equals(formatFilter,true)) &&
-                            (book.title.contains(search,true) ||
-                                info?.optString("author").orEmpty().contains(search,true)) &&
+                            SmartLibrary.matches(book,info,search) &&
                             (genreFilter==GenreCatalog.UNKNOWN || genre==genreFilter) &&
                             (collectionFilter.isEmpty() ||
                                 (0 until collections.length()).any {collections.optString(it)==collectionFilter})
@@ -371,6 +453,37 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 color=MaterialTheme.colorScheme.onBackground)
                         }
                     }
+                    val grouped=if(groupMode=="none") listOf("" to ordered)
+                        else ordered.groupBy { book->
+                            SmartLibrary.groupName(book,recordsByPath[book.path],groupMode)
+                        }.toSortedMap(compareBy(String.CASE_INSENSITIVE_ORDER) {it})
+                            .toList()
+                    if(selecting) {
+                        Surface(color=MaterialTheme.colorScheme.surface,
+                            shape=RoundedCornerShape(14.dp)) {
+                            Column(Modifier.fillMaxWidth().padding(8.dp)) {
+                                Row(verticalAlignment=Alignment.CenterVertically) {
+                                    Text(ui("Seçilmiş kitablar")+": ${selectedBooks.size}",
+                                        modifier=Modifier.weight(1f),fontSize=13.sp)
+                                    TextButton(onClick={
+                                        selectedBooks=ordered.map {it.path}.toSet()
+                                    }) {Text(ui("Hamısını seç"))}
+                                }
+                                Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                                    OutlinedButton(onClick={showBulkCollection=true},
+                                        enabled=selectedBooks.isNotEmpty(),modifier=Modifier.weight(1f),
+                                        contentPadding=PaddingValues(horizontal=5.dp)) {
+                                        Text(ui("Kolleksiyaya əlavə et"),fontSize=12.sp)
+                                    }
+                                    OutlinedButton(onClick={showBulkHideConfirm=true},
+                                        enabled=selectedBooks.isNotEmpty(),modifier=Modifier.weight(1f),
+                                        contentPadding=PaddingValues(horizontal=5.dp)) {
+                                        Text(ui("Gizlət"),fontSize=12.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
                     if(ordered.isEmpty()) {
                         Box(Modifier.fillMaxSize().padding(bottom=60.dp),contentAlignment=Alignment.Center) {
                             Column(horizontalAlignment=Alignment.CenterHorizontally) {
@@ -390,13 +503,48 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 }
                             }
                         }
+                    } else if(layoutMode=="grid") {
+                        LazyVerticalGrid(columns=GridCells.Fixed(2),
+                            contentPadding=PaddingValues(bottom=96.dp),
+                            horizontalArrangement=Arrangement.spacedBy(10.dp),
+                            verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                            grouped.forEach { (heading,groupBooks)->
+                                if(groupMode!="none") item(span={GridItemSpan(maxLineSpan)}) {
+                                    Text(heading,fontWeight=FontWeight.Bold,fontSize=16.sp,
+                                        modifier=Modifier.padding(top=10.dp,bottom=2.dp))
+                                }
+                                gridItems(groupBooks,key={it.path}) { book->
+                                    SmartGridBook(book,store,
+                                        selected=book.path in selectedBooks,selecting=selecting,
+                                        onOpen={openingMark=null;selectedPath=book.path},
+                                        onMore={menuBook=book},
+                                        onSelect={toggleSelection(book.path)})
+                                }
+                            }
+                        }
                     } else LazyColumn(contentPadding=PaddingValues(bottom=96.dp),
                         verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                        items(ordered,key={it.path}) { book->
-                            LibraryCard(book,store,onOpen={
-                                    openingMark=null
-                                    selectedPath=book.path
-                                },onMore={menuBook=book})
+                        grouped.forEach { (heading,groupBooks)->
+                            if(groupMode!="none") item {
+                                Text(heading,fontWeight=FontWeight.Bold,fontSize=16.sp,
+                                    modifier=Modifier.padding(top=10.dp,bottom=2.dp))
+                            }
+                            items(groupBooks,key={it.path}) { book->
+                                Row(verticalAlignment=Alignment.CenterVertically) {
+                                    if(selecting) Checkbox(
+                                        checked=book.path in selectedBooks,
+                                        onCheckedChange={toggleSelection(book.path)})
+                                    Box(Modifier.weight(1f)) {
+                                        LibraryCard(book,store,onOpen={
+                                            if(selecting)toggleSelection(book.path)
+                                            else {openingMark=null;selectedPath=book.path}
+                                        },onMore={
+                                            if(selecting)toggleSelection(book.path)
+                                            else menuBook=book
+                                        })
+                                    }
+                                }
+                            }
                         }
                     }
                 }
