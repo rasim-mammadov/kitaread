@@ -14,6 +14,14 @@ class GenreCatalogTest {
         assertEquals(GenreCatalog.UNKNOWN,GenreCatalog.fromSubjects(emptyList()))
         assertEquals(GenreCatalog.UNKNOWN,GenreCatalog.fromSubjects(listOf("XYZ Catalog 143")))
     }
+    @Test fun titleLevelsAndNextMilestones() {
+        assertEquals("I · Kəşfiyyatçı",GenreCatalog.level(1))
+        assertEquals("II · Səyyah",GenreCatalog.level(5))
+        assertEquals("III · Ustad",GenreCatalog.level(15))
+        assertEquals(5,GenreCatalog.nextMilestone(3))
+        assertEquals(15,GenreCatalog.nextMilestone(5))
+        assertEquals(null,GenreCatalog.nextMilestone(15))
+    }
     @Test fun genreHasReaderTitle() {
         assertEquals("Kosmos Səyyahı",GenreCatalog.title("Elmi fantastika"))
         assertEquals("Cəngavər",GenreCatalog.title("Fantastika"))
