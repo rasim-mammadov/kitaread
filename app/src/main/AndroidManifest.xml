@@ -1,8 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
         android:label="KitaRead"
-        android:icon="@drawable/kitaread_43_mark"
-        android:roundIcon="@drawable/kitaread_43_mark"
+        android:icon="@drawable/kitaread_43_launcher"
+        android:roundIcon="@drawable/kitaread_43_launcher"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="false">
         <activity android:name=".MainActivity" android:exported="true"
