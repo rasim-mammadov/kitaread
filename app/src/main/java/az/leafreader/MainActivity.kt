@@ -382,7 +382,7 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
                             "body{height:100vh!important;column-width:calc(100vw - 48px)!important;"+
                             "column-gap:48px!important;column-fill:auto!important;overflow:visible!important;}"
                         else "html{overflow-x:hidden!important;overflow-y:auto!important;}"
-                        val css="<meta name='viewport' content='width=device-width,initial-scale=1.0'>"+
+                        val css="<meta name='viewport' content='width=device-width,initial-scale=1.0' />"+
                             "<style>html{margin:0!important;padding:0!important;}body{"+
                             "background:"+background+"!important;color:"+foreground+"!important;"+
                             "font-size:"+font.toInt()+"px!important;line-height:"+(line/100f)+"!important;"+
@@ -392,7 +392,7 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
                         val result=if(html.contains("</head>",true))
                             html.replace("</head>",css+"</head>",true) else css+html
                         view.loadDataWithBaseURL(pageFile.parentFile!!.toURI().toString(),
-                            result,"application/xhtml+xml","UTF-8",null)
+                            result,"text/html","UTF-8",null)
                         webView=view
                         view
                     },modifier=Modifier.fillMaxSize())
