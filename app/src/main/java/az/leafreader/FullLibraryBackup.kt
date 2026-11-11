@@ -47,10 +47,16 @@ class FullLibraryBackup(private val context:Context,private val store:BookStore)
                 val cover=book.optString("cover")
                 val sources=listOf("books/$path" to file)+
                     if(cover.isNotBlank()) {
-                        require(safeName(cover)){"Üz qabığı yolu etibarsızdır"}
+                        val coverName=cover.removePrefix("covers/")
+                        require(safeName(coverName) &&
+                            (cover==coverName || cover=="covers/$coverName")) {
+                            "Üz qabığı yolu etibarsızdır"
+                        }
                         val coverFile=File(root,cover).canonicalFile
-                        if(coverFile.parentFile==root && coverFile.isFile)
-                            listOf("covers/$cover" to coverFile) else emptyList()
+                        val coverRoot=File(root,"covers").canonicalFile
+                        if(coverFile.isFile &&
+                            coverFile.parentFile in setOf(root,coverRoot))
+                            listOf("covers/$coverName" to coverFile) else emptyList()
                     } else emptyList()
                 for((entry,source) in sources) {
                     if(!archived.add(entry))continue
@@ -128,8 +134,12 @@ class FullLibraryBackup(private val context:Context,private val store:BookStore)
                 val copy=JSONObject(old.toString()).put("path",newPath)
                 val cover=old.optString("cover")
                 if(cover.isNotBlank()) {
-                    require(safeName(cover)){"Üz qabığı yolu etibarsızdır"}
-                    val coverSource=staged["covers/$cover"]
+                    val coverName=cover.removePrefix("covers/")
+                    require(safeName(coverName) &&
+                        (cover==coverName || cover=="covers/$coverName")) {
+                        "Üz qabığı yolu etibarsızdır"
+                    }
+                    val coverSource=staged["covers/$coverName"]
                     if(coverSource!=null) {
                         val extension=cover.substringAfterLast('.',"jpg").lowercase()
                         val safeExt=if(extension in setOf("jpg","jpeg","png","webp"))extension else "jpg"
