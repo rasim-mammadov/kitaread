@@ -302,9 +302,12 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         }
                     }
                     val allCollections=remember(libraryVersion) {store.collections()}
+                    val recordsByPath=remember(books,libraryVersion) {
+                        store.records().associateBy {it.optString("path")}
+                    }
                     Spacer(Modifier.height(9.dp))
                     val visible=books.filter { book->
-                        val info=store.find(book.path)
+                        val info=recordsByPath[book.path]
                         val genre=info?.optString("genre",GenreCatalog.UNKNOWN)
                         val collections=info?.optJSONArray("collections") ?: org.json.JSONArray()
                         !((info?.optBoolean("hidden",false)) ?:false) &&
@@ -320,7 +323,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                     val recent=if(filter=="Hamısı" && search.isBlank())
                         ordered.firstOrNull {book->
                             book.status=="Oxunur" &&
-                            (store.find(book.path)?.optLong("lastReadTimestamp",0L) ?:0L)>0L
+                            (recordsByPath[book.path]?.optLong("lastReadTimestamp",0L) ?:0L)>0L
                         } else null
                     if(recent!=null) {
                         Row(
