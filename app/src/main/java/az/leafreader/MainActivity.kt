@@ -207,8 +207,9 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
             val report=store.restoreMetadata(data)
             books=store.books()
             Toast.makeText(context,UiLanguage.translate("Bərpa: ${report.imported} kitab. ${report.missingFiles} kitabın faylı cihazda yoxdur.",
-                Toast.LENGTH_LONG).show()
-        }catch(e:Exception){Toast.makeText(context,e.message ?: "Import xətası",store.setting().getString("language","az") ?: "az"),Toast.LENGTH_LONG).show()}
+                    store.setting().getString("language","az") ?: "az"),Toast.LENGTH_LONG).show()
+        }catch(e:Exception){Toast.makeText(context,UiLanguage.translate(e.message ?: "Import xətası",
+                    store.setting().getString("language","az") ?: "az"),Toast.LENGTH_LONG).show()}
     }
     CompositionLocalProvider(LocalUiLanguage provides language) {
     MaterialTheme(colorScheme=appColors,
@@ -514,7 +515,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         deleteBook=null
                     }catch(e:Exception) {
                         Toast.makeText(context,UiLanguage.translate(e.message ?: "Kitab silinmədi",
-                            Toast.LENGTH_LONG).show()
+                            store.setting().getString("language","az") ?: "az"),Toast.LENGTH_LONG).show()
                     }
                 }) {Text(ui(if(deleteMode=="delete")"Həmişəlik sil" else "Çıxar"))}},
                 dismissButton={TextButton(onClick={deleteBook=null}) {Text(ui("Ləğv et"))}}
@@ -726,7 +727,8 @@ private fun ReaderScreen(
                     item.put("completedAt",java.text.SimpleDateFormat("yyyy-MM-dd",Locale.US)
                         .format(java.util.Date()))
             }
-            Toast.makeText(context,"Kitab bitirildi ✓",store.setting().getString("language","az") ?: "az"),Toast.LENGTH_SHORT).show()
+            Toast.makeText(context,UiLanguage.translate("Kitab bitirildi ✓",
+                store.setting().getString("language","az") ?: "az"),Toast.LENGTH_SHORT).show()
         }
     }
     DisposableEffect(book.path) {
@@ -949,8 +951,9 @@ private fun ReaderScreen(
                             val added=store.toggleBookmark(book.path,chapter,
                                 if(isTextBook)fraction else 0.0)
                             bookmarkRefresh++
-                            Toast.makeText(context,
+                            Toast.makeText(context,UiLanguage.translate(
                                 if(added)"Əlfəcin əlavə edildi" else "Əlfəcin silindi",
+                                store.setting().getString("language","az") ?: "az"),
                                 Toast.LENGTH_SHORT).show()
                         },modifier=Modifier.size(44.dp)) {
                             val isMarked=remember(bookmarkRefresh,chapter,fraction) {
