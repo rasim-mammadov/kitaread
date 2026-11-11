@@ -215,6 +215,9 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
     var theme by remember {mutableStateOf(prefs.getString("theme","Sepia") ?: "Sepia")}
     var font by remember {mutableFloatStateOf(prefs.getInt("fontSize",20).toFloat())}
     var line by remember {mutableFloatStateOf(prefs.getInt("lineSpacing",160).toFloat())}
+    var alignment by remember {
+        mutableStateOf(prefs.getString("textAlignment","left") ?: "left")
+    }
     var mode by remember {mutableStateOf(prefs.getString("epubMode","scroll") ?: "scroll")}
     var swipe by remember {mutableStateOf(prefs.getBoolean("swipeTurn",true))}
     var arrows by remember {mutableStateOf(prefs.getBoolean("sideButtons",false))}
@@ -318,7 +321,7 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
             } else if(book.type=="epub") {
                 if(chapterFiles.isEmpty()) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
                     CircularProgressIndicator()
-                } else key(chapter,mode,font,line,theme) {
+                } else key(chapter,mode,font,line,theme,alignment) {
                     var ready by remember {mutableStateOf(false)}
                     val pageFile=chapterFiles[chapter]
                     AndroidView(factory={ctx->
@@ -392,13 +395,29 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
                             "body{width:100%!important;height:auto!important;min-height:100%!important;"+
                             "-webkit-column-count:initial!important;column-count:initial!important;"+
                             "column-width:auto!important;white-space:normal!important;overflow:visible!important;}"
+                        // Many EPUBs set font sizes, line heights and centered text on
+                        // nested elements. The reader's explicit preferences override
+                        // paragraph-level book styling while headings keep their hierarchy.
+                        val textRules="body p,body div,body span,body section,body article,"+
+                            "body blockquote,body li,body a,body em,body strong,body b,body i,"+
+                            "body small,body td,body th,body font,body center{"+
+                            "font-size:inherit!important;line-height:inherit!important;"+
+                            "text-align:inherit!important;letter-spacing:normal!important;}"+
+                            "body h1,body h2,body h3,body h4,body h5,body h6{"+
+                            "text-align:inherit!important;line-height:inherit!important;}"+
+                            "body h1{font-size:1.6em!important;}body h2{font-size:1.35em!important;}"+
+                            "body h3{font-size:1.15em!important;}"+
+                            "body p{white-space:normal!important;overflow:visible!important;}"+
+                            "body font{font-size:inherit!important;}"
                         val css="<meta name='viewport' content='width=device-width,initial-scale=1.0' />"+
                             "<style>html{margin:0!important;padding:0!important;}body{"+
                             "background:"+background+"!important;color:"+foreground+"!important;"+
-                            "font-size:"+font.toInt()+"px!important;line-height:"+(line/100f)+"!important;"+
+                            "font-size:"+font.toInt()+"px!important;"+
+                            "line-height:"+(line/100f)+"!important;"+
+                            "text-align:"+alignment+"!important;direction:ltr!important;"+
                             "padding:24px!important;margin:0!important;box-sizing:border-box!important;}"+
                             "img,svg{max-width:100%!important;height:auto!important;}"+
-                            "p{white-space:normal!important;overflow:visible!important;}"+columns+"</style>"
+                            columns+textRules+"</style>"
                         val html=pageFile.readText(Charsets.UTF_8)
                         val result=if(html.contains("</head>",true))
                             html.replace("</head>",css+"</head>",true) else css+html
@@ -491,6 +510,23 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
                     Slider(font,{font=it; prefs.edit().putInt("fontSize",it.toInt()).apply()},valueRange=12f..34f)
                     Text("Sətirarası məsafə  "+line.toInt()+"%",fontWeight=FontWeight.SemiBold)
                     Slider(line,{line=it; prefs.edit().putInt("lineSpacing",it.toInt()).apply()},valueRange=110f..210f)
+                    Spacer(Modifier.height(12.dp))
+                    Text("Mətnin düzülüşü",fontWeight=FontWeight.SemiBold)
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        listOf("left" to "Soldan", "justify" to "İki kənara",
+                            "center" to "Ortadan", "right" to "Sağdan").forEach { (value,label)->
+                            FilterChip(
+                                selected=alignment==value,
+                                onClick={
+                                    alignment=value
+                                    prefs.edit().putString("textAlignment",value).apply()
+                                },
+                                label={Text(label)}
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
                     Text("Oxuma rejimi",fontWeight=FontWeight.SemiBold)
                     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                         FilterChip(mode=="pages",{mode="pages";prefs.edit().putString("epubMode",mode).apply()},
