@@ -150,7 +150,7 @@ fun ReadingNotesSheet(
                             IconButton(onClick={
                                 store.deleteAnnotation(bookPath,item.id)
                                 refresh++
-                            }) {Icon(Icons.Default.DeleteOutline,"Qeydi sil")}
+                            }) {Icon(Icons.Default.DeleteOutline,ui("Qeydi sil"))}
                         },
                         modifier=Modifier.clickable {
                             editingId=item.id
