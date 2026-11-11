@@ -150,13 +150,39 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                         verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         Text("Oxucu pasportu",fontSize=20.sp,fontWeight=FontWeight.Bold,
                             color=TextInk)
-                        Text("📚 Kitab Kəşfiyyatçısı",fontSize=18.sp,fontWeight=FontWeight.SemiBold)
-                        Text("Fərqli janrlara aid titullar üçün kitabların janr metadata-sı " +
-                            "növbəti mərhələdə əlavə olunacaq.",
-                            fontSize=13.sp,color=Color.Gray)
-                        Text("${overview.finishedBooks} kitab bitirilib · " +
+                        val earned=remember {GenreCatalog.earned(store.records())}
+                        val savedTitle=remember {store.setting().getString("readerTitle","")}
+                        var chosen by remember {
+                            mutableStateOf(savedTitle.orEmpty())
+                        }
+                        val unlocked=earned.map {GenreCatalog.title(it.first)}.distinct()
+                        if(chosen !in unlocked)chosen=unlocked.firstOrNull().orEmpty()
+                        Text(if(chosen.isNotBlank())"🏆 $"+"chosen" else "📚 Kitab Kəşfiyyatçısı",
+                            fontSize=18.sp,fontWeight=FontWeight.SemiBold)
+                        Text("${overview.finishedBooks} kitab bitirilib · "+
                             "${overview.activeDays} aktiv oxu günü",
                             fontSize=14.sp,color=Forest)
+                        if(earned.isEmpty()) {
+                            Text("Janra uyğun titul üçün janrı müəyyən edilmiş kitabı bitir.",
+                                fontSize=13.sp,color=Color.Gray)
+                        } else {
+                            Text("Qazandığın titullar",fontWeight=FontWeight.Medium)
+                            earned.forEach { (genre,count)->
+                                val title=GenreCatalog.title(genre)
+                                Row(Modifier.fillMaxWidth(),
+                                    verticalAlignment=Alignment.CenterVertically) {
+                                    Text("$"+"title · "+"$"+"genre · "+"$"+"count kitab",
+                                        modifier=Modifier.weight(1f),fontSize=13.sp)
+                                    TextButton(onClick={
+                                        chosen=title
+                                        store.setting().edit().putString("readerTitle",title).apply()
+                                    }) {
+                                        Text(if(chosen==title)"Seçilib" else "Seç",
+                                            fontSize=12.sp)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
