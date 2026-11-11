@@ -553,6 +553,7 @@ private fun ReaderScreen(
     book:ReaderBook,store:BookStore,tracker:ReadingSessionTracker,
     initialBookmark:BookStore.BookMark?=null,onExit:()->Unit
 ) {
+    val isTextBook=book.type in setOf("epub","md","markdown")
     BackHandler(onBack=onExit)
     val context=LocalContext.current
     val prefs=remember {store.setting()}
@@ -635,7 +636,7 @@ private fun ReaderScreen(
     }
     fun saveProgress(value:Double) {
         fraction=value.coerceIn(0.0,1.0)
-        val progress=if(book.type=="epub"&&chapterFiles.isNotEmpty()) {
+        val progress=if(isTextBook&&chapterFiles.isNotEmpty()) {
             val sizes=chapterFiles.map {it.length().coerceAtLeast(1).toDouble()}
             val sum=sizes.sum().coerceAtLeast(1.0)
             ((sizes.take(chapter).sum()+sizes[chapter.coerceIn(0,sizes.lastIndex)]*fraction)/sum*100).roundToInt()
@@ -650,17 +651,21 @@ private fun ReaderScreen(
     }
     LaunchedEffect(book.path) {
         try {
-            if(book.type=="epub") {
-                val extracted=withContext(Dispatchers.IO){store.extractChapters(book.path)}
-                chapterLabels=withContext(Dispatchers.IO){store.chapterTitles(book.path,extracted)}
+            if(isTextBook) {
+                val markdown=book.type in setOf("md","markdown")
+                val extracted=withContext(Dispatchers.IO){
+                    if(markdown)store.extractMarkdown(book.path) else store.extractChapters(book.path)
+                }
+                chapterLabels=if(markdown)store.markdownChapterTitles(book.path)
+                    else withContext(Dispatchers.IO){store.chapterTitles(book.path,extracted)}
                 chapterFiles=extracted
             }
             else pageCount=withContext(Dispatchers.IO){ReaderMedia.count(bookFile,book.type)}
-            chapter=chapter.coerceIn(0,(if(book.type=="epub")chapterFiles.size else pageCount)-1)
+            chapter=chapter.coerceIn(0,(if(isTextBook)chapterFiles.size else pageCount)-1)
         }catch(e:Exception){loadError=e.message ?: "Kitabı açmaq mümkün olmadı"}
     }
     fun turn(dir:Int) {
-        if(book.type=="epub" && mode=="pages") {
+        if(isTextBook && mode=="pages") {
             val view=webView
             if(view!=null) {
                 val step=(view.height*0.88f).toInt().coerceAtLeast(1)
@@ -675,7 +680,7 @@ private fun ReaderScreen(
                     return
                 }
             }
-        } else if(book.type=="epub") {
+        } else if(isTextBook) {
             webView?.let {v->
                 val max=(v.contentHeight*v.scale-v.height).toInt().coerceAtLeast(0)
                 val target=v.scrollY+dir*(v.height*0.88f).toInt()
@@ -687,7 +692,7 @@ private fun ReaderScreen(
             }
         }
         val actual=if(book.type=="cbz" && prefs.getBoolean("cbzRtl",false)) -dir else dir
-        val count=if(book.type=="epub")chapterFiles.size else pageCount
+        val count=if(isTextBook)chapterFiles.size else pageCount
         if(chapter+actual in 0 until count) {
             chapter+=actual
             fraction=if(dir<0)0.98 else 0.0
@@ -713,7 +718,7 @@ private fun ReaderScreen(
         Box(Modifier.fillMaxSize().padding(padding).background(paper)) {
             if(loadError!=null) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
                 Text(loadError ?: "",color=textColor,modifier=Modifier.padding(24.dp))
-            } else if(book.type=="epub") {
+            } else if(isTextBook) {
                 if(chapterFiles.isEmpty()) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
                     CircularProgressIndicator()
                 } else key(chapter,mode,font,line,theme,alignment,readerBookmarkJump) {
@@ -906,7 +911,7 @@ private fun ReaderScreen(
                                 overflow=TextOverflow.Ellipsis,color=textColor,
                                 fontWeight=FontWeight.Medium)
                         } else Spacer(Modifier.weight(1f))
-                        if(book.type=="epub") IconButton(onClick={showChapterSearch=true},
+                        if(isTextBook) IconButton(onClick={showChapterSearch=true},
                             modifier=Modifier.size(40.dp)) {
                             Icon(Icons.Default.Search,"Kitabda axtar",tint=textColor)
                         }
@@ -914,13 +919,13 @@ private fun ReaderScreen(
                             modifier=Modifier.size(40.dp)) {
                             Icon(Icons.Default.EditNote,"Qeydlər və sitatlar",tint=textColor)
                         }
-                        if(book.type=="epub") IconButton(onClick={showChapters=true},
+                        if(isTextBook) IconButton(onClick={showChapters=true},
                             modifier=Modifier.size(40.dp)) {
                             Icon(Icons.Default.List,"Fəsillər",tint=textColor)
                         }
                         IconButton(onClick={
                             val added=store.toggleBookmark(book.path,chapter,
-                                if(book.type=="epub")fraction else 0.0)
+                                if(isTextBook)fraction else 0.0)
                             bookmarkRefresh++
                             Toast.makeText(context,
                                 if(added)"Əlfəcin əlavə edildi" else "Əlfəcin silindi",
@@ -928,7 +933,7 @@ private fun ReaderScreen(
                         },modifier=Modifier.size(44.dp)) {
                             val isMarked=remember(bookmarkRefresh,chapter,fraction) {
                                 store.hasBookmark(book.path,chapter,
-                                    if(book.type=="epub")fraction else 0.0)
+                                    if(isTextBook)fraction else 0.0)
                             }
                             Icon(if(isMarked)Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                                 "Əlfəcin əlavə et və ya sil",tint=textColor)
@@ -946,7 +951,7 @@ private fun ReaderScreen(
             if(!chrome) {
                 Text(liveProgress.toString()+"%",modifier=Modifier.align(Alignment.BottomStart)
                     .padding(start=24.dp,bottom=12.dp),fontSize=12.sp,color=textColor.copy(alpha=0.6f))
-                Text(if(book.type=="epub")"Fəsil "+(chapter+1) else (chapter+1).toString()+"/"+pageCount,
+                Text(if(isTextBook)"Fəsil "+(chapter+1) else (chapter+1).toString()+"/"+pageCount,
                     modifier=Modifier.align(Alignment.BottomEnd).padding(end=24.dp,bottom=12.dp),
                     fontSize=12.sp,color=textColor.copy(alpha=0.6f))
             }
@@ -954,7 +959,7 @@ private fun ReaderScreen(
                 Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(paper.copy(alpha=0.97f))
                     .padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
                     IconButton(onClick={turn(-1)}) {Icon(Icons.AutoMirrored.Filled.ArrowBack,"Əvvəlki",tint=textColor)}
-                    Text(if(book.type=="epub")"Fəsil "+(chapter+1)+"/"+chapterFiles.size
+                    Text(if(isTextBook)"Fəsil "+(chapter+1)+"/"+chapterFiles.size
                         else "Səhifə "+(chapter+1)+"/"+pageCount,
                         modifier=Modifier.weight(1f),color=textColor,fontSize=13.sp)
                     IconButton(onClick={turn(1)}) {Icon(Icons.AutoMirrored.Filled.ArrowForward,"Növbəti",tint=textColor)}
@@ -1012,7 +1017,7 @@ private fun ReaderScreen(
                     }
                 }
                 Spacer(Modifier.height(16.dp))
-                if(book.type=="epub") {
+                if(isTextBook) {
                     Text("Şrift ölçüsü  "+font.toInt()+" px",fontWeight=FontWeight.SemiBold)
                     Slider(font,{font=it; prefs.edit().putInt("fontSize",it.toInt()).apply()},valueRange=12f..34f)
                     Text("Sətirarası məsafə  "+line.toInt()+"%",fontWeight=FontWeight.SemiBold)
@@ -1051,7 +1056,7 @@ private fun ReaderScreen(
                     Text("Sağ-sol düymələri göstər",modifier=Modifier.weight(1f))
                     Switch(arrows,{arrows=it;prefs.edit().putBoolean("sideButtons",it).apply()})
                 }
-                if(book.type!="epub") {
+                if(!isTextBook) {
                     var fit by remember {mutableStateOf(prefs.getBoolean("fitWidth",false))}
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         Text("Fit to Width",modifier=Modifier.weight(1f))
@@ -1064,7 +1069,7 @@ private fun ReaderScreen(
             }
         }
     }
-    if(showChapterSearch && book.type=="epub") {
+    if(showChapterSearch && isTextBook) {
         ChapterSearchSheet(chapters=chapterFiles,labels=chapterLabels,
             onJump={index,query->
                 pendingSearch=query
@@ -1090,7 +1095,7 @@ private fun ReaderScreen(
             currentChapter=if(draftChapter>=0)draftChapter else chapter,
             initialQuote=draftQuote,
             onJump={index->
-                if(book.type=="epub") {
+                if(isTextBook) {
                     if(index in chapterFiles.indices) {
                         chapter=index;fraction=0.0;saveProgress(0.0)
                     }
