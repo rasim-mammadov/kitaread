@@ -11,6 +11,15 @@ import android.content.res.Configuration
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.SystemClock
+import android.view.WindowManager
+import android.view.WindowInsets
+import android.view.WindowInsetsController
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
+import org.json.JSONObject
 import android.view.MotionEvent
 import android.view.View
 import android.webkit.WebResourceRequest
@@ -579,16 +588,46 @@ private fun ReaderScreen(
     BackHandler(onBack=onExit)
     val context=LocalContext.current
     val prefs=remember {store.setting()}
+    val recordOptions=remember(book.path) {store.find(book.path)?.optJSONObject("readerOptions")}
+    var perBookSettings by remember(book.path) {
+        mutableStateOf(recordOptions?.optBoolean("enabled",false) ?:false)
+    }
+    fun optionInt(key:String, fallback:Int):Int =
+        if(perBookSettings) recordOptions?.optInt(key,fallback) ?:fallback else fallback
+    fun optionString(key:String, fallback:String):String =
+        if(perBookSettings) recordOptions?.optString(key,fallback) ?:fallback else fallback
+    fun optionBoolean(key:String, fallback:Boolean):Boolean =
+        if(perBookSettings) recordOptions?.optBoolean(key,fallback) ?:fallback else fallback
+    fun saveOption(key:String,value:Any) {
+        if(perBookSettings) {
+            store.change(book.path) {entry->
+                val opts=entry.optJSONObject("readerOptions") ?:JSONObject()
+                opts.put("enabled",true)
+                opts.put(key,value)
+                entry.put("readerOptions",opts)
+            }
+            recordOptions?.put(key,value)
+        } else {
+            val edit=prefs.edit()
+            when(value) {
+                is Boolean->edit.putBoolean(key,value)
+                is Int->edit.putInt(key,value)
+                is String->edit.putString(key,value)
+            }
+            edit.apply()
+        }
+    }
     var readerFollowsApp by remember {
         mutableStateOf(prefs.getBoolean("readerFollowsApp",true))
     }
     var theme by remember {
-        mutableStateOf(if(readerFollowsApp)
-            prefs.getString("theme","Sepia") ?: "Sepia"
+        mutableStateOf(if(perBookSettings)
+            optionString("readerTheme",prefs.getString("theme","Sepia") ?: "Sepia")
+        else if(readerFollowsApp) prefs.getString("theme","Sepia") ?: "Sepia"
         else prefs.getString("readerTheme","Sepia") ?: "Sepia")
     }
     var rotationMode by remember {
-        mutableStateOf(prefs.getString("screenOrientation","Auto") ?: "Auto")
+        mutableStateOf(optionString("screenOrientation",prefs.getString("screenOrientation","Auto") ?: "Auto"))
     }
     val activity=context as? ComponentActivity
     DisposableEffect(activity,rotationMode) {
@@ -603,14 +642,14 @@ private fun ReaderScreen(
         }
     }
     val landscape=LocalConfiguration.current.orientation==Configuration.ORIENTATION_LANDSCAPE
-    var font by remember {mutableFloatStateOf(prefs.getInt("fontSize",20).toFloat())}
-    var line by remember {mutableFloatStateOf(prefs.getInt("lineSpacing",160).toFloat())}
+    var font by remember {mutableFloatStateOf(optionInt("fontSize",prefs.getInt("fontSize",20)).toFloat())}
+    var line by remember {mutableFloatStateOf(optionInt("lineSpacing",prefs.getInt("lineSpacing",160)).toFloat())}
     var alignment by remember {
-        mutableStateOf(prefs.getString("textAlignment","left") ?: "left")
+        mutableStateOf(optionString("textAlignment",prefs.getString("textAlignment","left") ?: "left"))
     }
-    var mode by remember {mutableStateOf(prefs.getString("epubMode","scroll") ?: "scroll")}
-    var swipe by remember {mutableStateOf(prefs.getBoolean("swipeTurn",true))}
-    var arrows by remember {mutableStateOf(prefs.getBoolean("sideButtons",false))}
+    var mode by remember {mutableStateOf(optionString("epubMode",prefs.getString("epubMode","scroll") ?: "scroll"))}
+    var swipe by remember {mutableStateOf(optionBoolean("swipeTurn",prefs.getBoolean("swipeTurn",true)))}
+    var arrows by remember {mutableStateOf(optionBoolean("sideButtons",prefs.getBoolean("sideButtons",false)))}
     var chrome by remember {mutableStateOf(false)}
     var showSettings by remember {mutableStateOf(false)}
     var showChapters by remember {mutableStateOf(false)}
