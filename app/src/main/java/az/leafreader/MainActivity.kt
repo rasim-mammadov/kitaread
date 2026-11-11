@@ -324,7 +324,9 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         val collections=info?.optJSONArray("collections") ?: org.json.JSONArray()
                         !((info?.optBoolean("hidden",false)) ?:false) &&
                         (filter=="Hamısı" || book.status==filter) &&
-                        (formatFilter=="Hamısı" || book.type.equals(formatFilter,true)) &&
+                        (formatFilter=="Hamısı" ||
+                            (formatFilter=="MD" && book.type in setOf("md","markdown")) ||
+                            book.type.equals(formatFilter,true)) &&
                             (book.title.contains(search,true) ||
                                 info?.optString("author").orEmpty().contains(search,true)) &&
                             (genreFilter==GenreCatalog.UNKNOWN || genre==genreFilter) &&
@@ -366,7 +368,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 Spacer(Modifier.height(16.dp))
                                 Text(ui("Burada hələ kitab yoxdur"),fontSize=20.sp,fontWeight=FontWeight.SemiBold)
                                 Spacer(Modifier.height(8.dp))
-                                Text(ui(if(books.isEmpty())"EPUB, PDF və ya CBZ əlavə et"
+                                Text(ui(if(books.isEmpty())"EPUB, PDF, CBZ və Markdown əlavə et"
                                     else "Axtarış və filtrlərə uyğun kitab tapılmadı"),
                                     color=MaterialTheme.colorScheme.onSurfaceVariant)
                                 if(books.isNotEmpty()) {
