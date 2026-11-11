@@ -258,6 +258,18 @@ object UiLanguage {
         "Ən azı 2 simvol daxil et" to Pair("Введите минимум 2 символа","Enter at least 2 characters"),
         "Görünür" to Pair("Видно","Visible"),
         "3.5 Preview · Offline EPUB / PDF / CBZ / Markdown" to Pair("Версия 3.5 · Без интернета · EPUB / PDF / CBZ / Markdown","3.5 Preview · Offline EPUB / PDF / CBZ / Markdown")
+,
+        "Focus rejimi" to Pair("Режим фокусировки","Focus mode"),
+        "Focus rejimindən çıx" to Pair("Выйти из режима фокусировки","Exit focus mode"),
+        "Oxu taymeri" to Pair("Таймер чтения","Reading timer"),
+        "Sıfırla" to Pair("Сбросить","Reset"),
+        "Parlaqlıq" to Pair("Яркость","Brightness"),
+        "Axıcı səhifə keçidi" to Pair("Плавное перелистывание","Smooth page transitions"),
+        "Bu kitab üçün ayrıca parametrlər" to Pair("Индивидуальные настройки книги","Per-book settings"),
+        "Sistem parlaqlığı" to Pair("Системная яркость","System brightness"),
+        "Fərdi parlaqlıq" to Pair("Своя яркость","Custom brightness"),
+        "Oxuma sessiyası" to Pair("Сеанс чтения","Reading session"),
+        "Tam ekran" to Pair("Полный экран","Fullscreen")
     )
     fun translate(text:String,language:String):String {
         if(language=="az")return when(text) {
