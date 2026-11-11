@@ -66,30 +66,30 @@ fun ChapterSearchSheet(
     }
     ModalBottomSheet(onDismissRequest=onDismiss) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.82f).padding(horizontal=20.dp)) {
-            Text("Kitab daxilində axtarış",fontSize=23.sp,fontWeight=FontWeight.Bold)
+            Text(ui("Kitab daxilində axtarış"),fontSize=23.sp,fontWeight=FontWeight.Bold)
             Spacer(Modifier.height(10.dp))
             OutlinedTextField(query,{query=it},modifier=Modifier.fillMaxWidth(),
-                singleLine=true,label={Text("Söz və ya ifadə")},
+                singleLine=true,label={Text(ui("Söz və ya ifadə"))},
                 leadingIcon={Icon(Icons.Default.Search,null)})
             Spacer(Modifier.height(10.dp))
-            Text(if(searching)"Axtarılır…" else if(query.trim().length<2)
-                "Ən azı 2 simvol daxil et" else "${results.size} nəticə (maksimum 80)",
+            Text(ui(if(searching)"Axtarılır…" else if(query.trim().length<2)
+                "Ən azı 2 simvol daxil et" else "${results.size} nəticə (maksimum 80)"),
                 fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
-            if(error!=null)Text(error ?: "",color=MaterialTheme.colorScheme.error)
+            if(error!=null)Text(ui(error ?: ""),color=MaterialTheme.colorScheme.error)
             if(searching)LinearProgressIndicator(Modifier.fillMaxWidth())
             LazyColumn(contentPadding=PaddingValues(bottom=32.dp)) {
                 items(results) {hit->
                     Column(Modifier.fillMaxWidth().clickable {onJump(hit.chapter,query)}
                         .padding(vertical=12.dp)) {
-                        Text(labels.getOrNull(hit.chapter) ?: "Fəsil ${hit.chapter+1}",
+                        Text(ui(labels.getOrNull(hit.chapter) ?: "Fəsil ${hit.chapter+1}"),
                             fontWeight=FontWeight.SemiBold)
                         Text(hit.snippet,fontSize=13.sp,maxLines=4)
                         Row {
                             TextButton(onClick={onJump(hit.chapter,query)}) {
-                                Text("Fəsilə keç")
+                                Text(ui("Fəsilə keç"))
                             }
                             TextButton(onClick={onSaveQuote(hit.chapter,hit.snippet)}) {
-                                Text("Qeyd / sitat saxla")
+                                Text(ui("Qeyd / sitat saxla"))
                             }
                         }
                     }
@@ -116,25 +116,25 @@ fun ReadingNotesSheet(
     val notes=remember(refresh,bookPath) {store.annotations(bookPath)}
     ModalBottomSheet(onDismissRequest=onClose) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.84f).padding(horizontal=20.dp)) {
-            Text("Qeydlər və sitatlar",fontSize=23.sp,fontWeight=FontWeight.Bold)
-            Text("Fəsil ${chapter+1} · offline saxlanılır",
+            Text(ui("Qeydlər və sitatlar"),fontSize=23.sp,fontWeight=FontWeight.Bold)
+            Text(ui("Fəsil ${chapter+1} · offline saxlanılır"),
                 fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(10.dp))
             OutlinedTextField(quote,{quote=it},modifier=Modifier.fillMaxWidth(),
-                label={Text("İşarələnəcək mətn (istəyə bağlı)")},maxLines=3)
+                label={Text(ui("İşarələnəcək mətn (istəyə bağlı)"))},maxLines=3)
             OutlinedTextField(note,{note=it},modifier=Modifier.fillMaxWidth(),
-                label={Text("Şəxsi qeyd")},minLines=2,maxLines=4)
+                label={Text(ui("Şəxsi qeyd"))},minLines=2,maxLines=4)
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
                 if(editingId!=null)TextButton(onClick={
                     editingId=null;quote="";note="";chapter=currentChapter
-                }) {Text("Ləğv et")}
+                }) {Text(ui("Ləğv et"))}
                 Button(enabled=quote.isNotBlank() || note.isNotBlank(),onClick={
                     store.saveAnnotation(bookPath,chapter,quote,note,editingId)
                     editingId=null;quote="";note="";chapter=currentChapter
                     refresh++
-                }) {Text(if(editingId==null)"Saxla" else "Yenilə")}
+                }) {Text(ui(if(editingId==null)"Saxla" else "Yenilə"))}
             }
-            Text("Saxlanılmış qeydlər · ${notes.size}",
+            Text(ui("Saxlanılmış qeydlər · ${notes.size}"),
                 fontWeight=FontWeight.SemiBold)
             Spacer(Modifier.height(6.dp))
             LazyColumn(contentPadding=PaddingValues(bottom=32.dp)) {
@@ -143,7 +143,7 @@ fun ReadingNotesSheet(
                         headlineContent={Text(item.quote.ifBlank {"Fəsil ${item.chapter+1} qeydi"},
                             maxLines=3)},
                         supportingContent={Column {
-                            Text("Fəsil ${item.chapter+1}",fontSize=12.sp)
+                            Text(ui("Fəsil ${item.chapter+1}"),fontSize=12.sp)
                             if(item.note.isNotBlank())Text(item.note,maxLines=3)
                         }},
                         trailingContent={
@@ -159,7 +159,7 @@ fun ReadingNotesSheet(
                             chapter=item.chapter
                         }
                     )
-                    TextButton(onClick={onJump(item.chapter)}) {Text("Fəsili aç")}
+                    TextButton(onClick={onJump(item.chapter)}) {Text(ui("Fəsili aç"))}
                     HorizontalDivider()
                 }
             }
