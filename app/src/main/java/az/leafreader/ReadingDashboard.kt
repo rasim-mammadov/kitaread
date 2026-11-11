@@ -32,7 +32,7 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
     val overview=remember {ReadingStats.calculate(store.records(),LocalDate.now())}
     Scaffold(
         contentWindowInsets=WindowInsets.safeDrawing,
-        containerColor=SoftBackground,
+        containerColor=MaterialTheme.colorScheme.background,
         topBar={
             Row(Modifier.fillMaxWidth().statusBarsPadding()
                 .padding(horizontal=12.dp,vertical=10.dp),
@@ -41,8 +41,8 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack,"Kitabxanaya qayıt")
                 }
                 Column(Modifier.padding(start=4.dp)) {
-                    Text("Oxu statistikası",fontSize=23.sp,fontWeight=FontWeight.Bold,color=TextInk)
-                    Text("Yalnız bu cihazdakı oxu məlumatları",fontSize=12.sp,color=Color.Gray)
+                    Text("Oxu statistikası",fontSize=23.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface)
+                    Text("Yalnız bu cihazdakı oxu məlumatları",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -70,14 +70,14 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                 }
             }
             item {
-                Card(colors=CardDefaults.cardColors(containerColor=Color.White),
+                Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),
                     shape=RoundedCornerShape(22.dp)) {
                     Column(Modifier.fillMaxWidth().padding(18.dp),
                         verticalArrangement=Arrangement.spacedBy(12.dp)) {
                         Text("Oxu təqvimi · son 14 gün",fontSize=18.sp,
-                            fontWeight=FontWeight.SemiBold,color=TextInk)
+                            fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface)
                         Text("Bir günün aktiv sayılması üçün ən az 5 dəqiqə oxu tələb olunur.",
-                            fontSize=12.sp,color=Color.Gray)
+                            fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         val byDay=overview.daily.associate {it.day to it.minutes}
                         val days=(13 downTo 0).map {LocalDate.now().minusDays(it.toLong())}
                         Column(verticalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -96,7 +96,7 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                                             Box(Modifier.fillMaxWidth().height(35.dp)
                                                 .background(shade,RoundedCornerShape(9.dp)))
                                             Text(day.dayOfMonth.toString(),fontSize=10.sp,
-                                                color=Color.Gray)
+                                                color=MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
                                 }
@@ -106,25 +106,25 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                 }
             }
             item {
-                Card(colors=CardDefaults.cardColors(containerColor=Color.White),
+                Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),
                     shape=RoundedCornerShape(22.dp)) {
                     Column(Modifier.fillMaxWidth().padding(18.dp),
                         verticalArrangement=Arrangement.spacedBy(12.dp)) {
                         Text("Son 6 ay · Bitirilmiş kitablar",fontSize=18.sp,
-                            fontWeight=FontWeight.SemiBold,color=TextInk)
+                            fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface)
                         val maxCount=(overview.completedMonthly.maxOfOrNull {it.second} ?: 0).coerceAtLeast(1)
                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),
                             verticalAlignment=Alignment.Bottom) {
                             overview.completedMonthly.forEach {entry->
                                 Column(Modifier.weight(1f),
                                     horizontalAlignment=Alignment.CenterHorizontally) {
-                                    Text(entry.second.toString(),fontSize=11.sp,color=Forest)
+                                    Text(entry.second.toString(),fontSize=11.sp,color=MaterialTheme.colorScheme.primary)
                                     Spacer(Modifier.height(5.dp))
                                     Box(Modifier.fillMaxWidth().height(
                                         (9f+75f*entry.second/maxCount).dp)
                                         .background(if(entry.second>0)Forest else Color(0xFFE7ECE7),
                                             RoundedCornerShape(topStart=7.dp,topEnd=7.dp)))
-                                    Text(entry.first,fontSize=10.sp,color=Color.Gray)
+                                    Text(entry.first,fontSize=10.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
@@ -132,12 +132,12 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                 }
             }
             item {
-                Card(colors=CardDefaults.cardColors(containerColor=Color.White),
+                Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),
                     shape=RoundedCornerShape(22.dp)) {
                     Column(Modifier.fillMaxWidth().padding(18.dp),
                         verticalArrangement=Arrangement.spacedBy(12.dp)) {
                         Text("Kitabxana tərkibi",fontSize=18.sp,
-                            fontWeight=FontWeight.SemiBold,color=TextInk)
+                            fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface)
                         LibraryMeter("EPUB",overview.epubBooks,overview.totalBooks)
                         LibraryMeter("PDF",overview.pdfBooks,overview.totalBooks)
                         LibraryMeter("CBZ · Komiks",overview.comicBooks,overview.totalBooks)
@@ -145,12 +145,12 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                 }
             }
             item {
-                Card(colors=CardDefaults.cardColors(containerColor=Color.White),
+                Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),
                     shape=RoundedCornerShape(22.dp)) {
                     Column(Modifier.fillMaxWidth().padding(18.dp),
                         verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         Text("Oxucu pasportu",fontSize=20.sp,fontWeight=FontWeight.Bold,
-                            color=TextInk)
+                            color=MaterialTheme.colorScheme.onSurface)
                         val earned=remember {GenreCatalog.earned(store.records())}
                         val savedTitle=remember {store.setting().getString("readerTitle","")}
                         var chosen by remember {
@@ -162,10 +162,10 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                             fontSize=18.sp,fontWeight=FontWeight.SemiBold)
                         Text("${overview.finishedBooks} kitab bitirilib · "+
                             "${overview.activeDays} aktiv oxu günü",
-                            fontSize=14.sp,color=Forest)
+                            fontSize=14.sp,color=MaterialTheme.colorScheme.primary)
                         if(earned.isEmpty()) {
                             Text("Janra uyğun titul üçün janrı müəyyən edilmiş kitabı bitir.",
-                                fontSize=13.sp,color=Color.Gray)
+                                fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         } else {
                             Text("Qazandığın titullar",fontWeight=FontWeight.Medium)
                             earned.forEach { (genre,count)->
@@ -178,7 +178,7 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                                             (GenreCatalog.nextMilestone(count)?.let {
                                                 " · növbəti: ${it}"
                                             } ?: ""),
-                                            color=Color.Gray,fontSize=11.sp)
+                                            color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=11.sp)
                                     }
                                     TextButton(onClick={
                                         chosen=title
@@ -199,12 +199,12 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
 @Composable
 private fun MetricTile(label:String,value:String,sub:String,modifier:Modifier=Modifier) {
     Card(modifier,shape=RoundedCornerShape(20.dp),
-        colors=CardDefaults.cardColors(containerColor=Color.White)) {
+        colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
         Column(Modifier.fillMaxWidth().padding(15.dp),
             verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            Text(label,fontSize=12.sp,color=Color.Gray)
-            Text(value,fontSize=22.sp,fontWeight=FontWeight.Bold,color=TextInk)
-            Text(sub,fontSize=11.sp,color=Forest)
+            Text(label,fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value,fontSize=22.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface)
+            Text(sub,fontSize=11.sp,color=MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -213,10 +213,10 @@ private fun LibraryMeter(label:String,count:Int,total:Int) {
     Column(verticalArrangement=Arrangement.spacedBy(5.dp)) {
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
             Text(label,fontSize=14.sp)
-            Text(count.toString(),fontSize=14.sp,color=Forest)
+            Text(count.toString(),fontSize=14.sp,color=MaterialTheme.colorScheme.primary)
         }
         LinearProgressIndicator(progress={if(total>0)count.toFloat()/total else 0f},
             modifier=Modifier.fillMaxWidth().height(6.dp),
-            color=Forest,trackColor=Color(0xFFE7ECE7))
+            color=MaterialTheme.colorScheme.primary,trackColor=Color(0xFFE7ECE7))
     }
 }
