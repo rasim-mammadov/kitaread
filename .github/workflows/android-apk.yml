@@ -2,7 +2,7 @@ name: Build Leaf Reader APK
 on:
   workflow_dispatch:
   push:
-    branches: [main, 'feature/leaf-reader-2.0', 'feature/leaf-reader-2.1', 'feature/leaf-reader-3.0', 'feature/leaf-reader-3.1-stability', 'feature/leaf-reader-3.2-identity-stats', 'feature/leaf-reader-3.3-personal-library', 'fix/leaf-reader-3.3.1-usability', 'fix/leaf-reader-3.3.2-orientation']
+    branches: [main, 'feature/leaf-reader-2.0', 'feature/leaf-reader-2.1', 'feature/leaf-reader-3.0', 'feature/leaf-reader-3.1-stability', 'feature/leaf-reader-3.2-identity-stats', 'feature/leaf-reader-3.3-personal-library', 'fix/leaf-reader-3.3.1-usability', 'fix/leaf-reader-3.3.2-orientation', 'feature/leaf-reader-3.3.3-library-ux']
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,6 +24,6 @@ jobs:
       - run: gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: LeafReader-3.3.2-orientation-debug-apk
+          name: LeafReader-3.3.3-library-ux-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
