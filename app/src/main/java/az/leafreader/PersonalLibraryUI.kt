@@ -47,35 +47,35 @@ fun BookDetailsSheet(book:ReaderBook,store:BookStore,onClose:()->Unit,onChanged:
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
             .padding(horizontal=24.dp).padding(bottom=24.dp),
             verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            Text("Kitab detalları",fontSize=24.sp,fontWeight=FontWeight.Bold)
-            OutlinedTextField(title,{title=it},label={Text("Kitabın adı")},
+            Text(ui("Kitab detalları"),fontSize=24.sp,fontWeight=FontWeight.Bold)
+            OutlinedTextField(title,{title=it},label={Text(ui("Kitabın adı"))},
                 modifier=Modifier.fillMaxWidth(),singleLine=true)
-            OutlinedTextField(author,{author=it},label={Text("Müəllif")},
+            OutlinedTextField(author,{author=it},label={Text(ui("Müəllif"))},
                 modifier=Modifier.fillMaxWidth(),singleLine=true)
-            Text("Oxu statusu",fontWeight=FontWeight.SemiBold)
+            Text(ui("Oxu statusu"),fontWeight=FontWeight.SemiBold)
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement=Arrangement.spacedBy(6.dp)) {
                 listOf("Oxunmayıb","Oxunur","Bitirilib","Yarımçıq saxlanılıb").forEach {item->
-                    FilterChip(selected=status==item,onClick={status=item},label={Text(item)})
+                    FilterChip(selected=status==item,onClick={status=item},label={Text(ui(item))})
                 }
             }
-            Text("Janr",fontWeight=FontWeight.SemiBold)
+            Text(ui("Janr"),fontWeight=FontWeight.SemiBold)
             Column(Modifier.fillMaxWidth()) {
                 GenreCatalog.genres.chunked(3).forEach { group->
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement=Arrangement.spacedBy(5.dp)) {
                         group.forEach { g->
                             FilterChip(selected=genre==g,onClick={genre=g},
-                                label={Text(g,fontSize=11.sp)})
+                                label={Text(ui(g),fontSize=11.sp)})
                         }
                     }
                 }
             }
-            Text("Şəxsi kolleksiyalar",fontWeight=FontWeight.SemiBold)
-            if(collections.isEmpty())Text("Hələ kolleksiya yoxdur",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=13.sp)
+            Text(ui("Şəxsi kolleksiyalar"),fontWeight=FontWeight.SemiBold)
+            if(collections.isEmpty())Text(ui("Hələ kolleksiya yoxdur"),color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=13.sp)
             collections.forEach {label->
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                    Text(label,modifier=Modifier.weight(1f))
+                    Text(ui(label),modifier=Modifier.weight(1f))
                     IconButton(onClick={
                         store.removeFromCollection(book.path,label)
                         collections=collections.filterNot {it==label}
@@ -85,7 +85,7 @@ fun BookDetailsSheet(book:ReaderBook,store:BookStore,onClose:()->Unit,onChanged:
             }
             Row(verticalAlignment=Alignment.CenterVertically) {
                 OutlinedTextField(newCollection,{newCollection=it},
-                    label={Text("Yeni kolleksiya")},modifier=Modifier.weight(1f),
+                    label={Text(ui("Yeni kolleksiya"))},modifier=Modifier.weight(1f),
                     singleLine=true)
                 Spacer(Modifier.width(8.dp))
                 Button(onClick={
@@ -96,17 +96,17 @@ fun BookDetailsSheet(book:ReaderBook,store:BookStore,onClose:()->Unit,onChanged:
                         newCollection=""
                         onChanged()
                     }
-                },enabled=newCollection.isNotBlank()) {Text("Əlavə et")}
+                },enabled=newCollection.isNotBlank()) {Text(ui("Əlavə et"))}
             }
-            Text("Şəxsi qiymətləndirmə: "+
-                (if(rating<0.5f)"Hələ yoxdur" else "${rating.toInt()} / 5"),
+            Text(ui("Şəxsi qiymətləndirmə: "+
+                (if(rating<0.5f)"Hələ yoxdur" else "${rating.toInt()} / 5")),
                 fontWeight=FontWeight.SemiBold)
             Slider(value=rating,onValueChange={rating=it},
                 valueRange=0f..5f,steps=4)
-            Text("Format: ${book.type.uppercase()} · Progress: ${book.progress}%",
+            Text(ui("Format: ${book.type.uppercase()} · Progress: ${book.progress}%"),
                 fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
             if(book.completedAt.isNotBlank())
-                Text("Bitirilmə tarixi: ${book.completedAt}",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=13.sp)
+                Text(ui("Bitirilmə tarixi: ${book.completedAt}"),color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=13.sp)
             Button(onClick={
                 store.change(book.path){row->
                     row.put("title",title.trim().ifBlank{book.title})
@@ -126,7 +126,7 @@ fun BookDetailsSheet(book:ReaderBook,store:BookStore,onClose:()->Unit,onChanged:
                 }
                 onChanged()
                 onClose()
-            },modifier=Modifier.fillMaxWidth().height(52.dp)) {Text("Dəyişiklikləri saxla")}
+            },modifier=Modifier.fillMaxWidth().height(52.dp)) {Text(ui("Dəyişiklikləri saxla"))}
         }
     }
 }
@@ -149,12 +149,12 @@ fun BookmarksSheet(
     }
     ModalBottomSheet(onDismissRequest=onClose,containerColor=MaterialTheme.colorScheme.background) {
         Column(Modifier.fillMaxWidth().padding(horizontal=22.dp).padding(bottom=18.dp)) {
-            Text("Əlfəcinlərim",fontSize=24.sp,fontWeight=FontWeight.Bold)
-            Text("${marks.size} yadda saxlanmış mövqe",fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(ui("Əlfəcinlərim"),fontSize=24.sp,fontWeight=FontWeight.Bold)
+            Text(ui("${marks.size} yadda saxlanmış mövqe"),fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(10.dp))
             if(marks.isEmpty()) {
                 Box(Modifier.fillMaxWidth().height(150.dp),contentAlignment=Alignment.Center) {
-                    Text("Hələ əlfəcin əlavə etməmisən",color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(ui("Hələ əlfəcin əlavə etməmisən"),color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }else LazyColumn(contentPadding=PaddingValues(bottom=25.dp)) {
                 items(marks,key={it.first.path+":"+
@@ -164,9 +164,9 @@ fun BookmarksSheet(
                             modifier=Modifier.weight(1f).clickable {onOpen(book.path,mark)},
                             headlineContent={Text(book.title,maxLines=1)},
                             supportingContent={
-                                Text((if(book.type=="epub")"Fəsil " else "Səhifə ")+
+                                Text(ui((if(book.type=="epub")"Fəsil " else "Səhifə ")+
                                     (mark.chapter+1)+
-                                    (if(book.type=="epub")" · ${(mark.fraction*100).toInt()}%" else ""))
+                                    (if(book.type=="epub")" · ${(mark.fraction*100).toInt()}%" else "")))
                             },
                             leadingContent={Icon(Icons.Default.Bookmark,null)}
                         )
