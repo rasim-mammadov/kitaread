@@ -20,7 +20,6 @@ class ReadingSessionTracker(private val store: BookStore) {
     private var lastEventAt = 0L
     private var accumulatedMs = 0L
     private var startedAt = 0L
-    private val maxIntervalMs = 5 * 60 * 1000L
 
     fun begin(path: String) {
         if (bookPath != path) {
@@ -60,7 +59,7 @@ class ReadingSessionTracker(private val store: BookStore) {
     private fun accrue() {
         val now = SystemClock.elapsedRealtime()
         if (lastEventAt > 0L) {
-            val interval = (now - lastEventAt).coerceIn(0L, maxIntervalMs)
+            val interval = ReadingMath.creditedInterval(lastEventAt, now)
             accumulatedMs += interval
         }
         lastEventAt = now
