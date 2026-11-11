@@ -523,11 +523,11 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
                 val metadata=store.find(book.path)
                 val author=metadata?.optString("author").orEmpty()
                 val genre=metadata?.optString("genre",GenreCatalog.UNKNOWN).orEmpty()
-                if(author.isNotBlank()) Text(author,color=Gray,fontSize=12.sp,
+                if(author.isNotBlank()) Text(author,color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp,
                     maxLines=1,overflow=TextOverflow.Ellipsis)
                 Text(book.status+"  •  "+book.type.uppercase()+
                     (if(genre.isNotBlank() && genre!=GenreCatalog.UNKNOWN)"  •  $genre" else ""),
-                    color=Gray,fontSize=12.sp,maxLines=1,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp,maxLines=1,
                     overflow=TextOverflow.Ellipsis)
                 LinearProgressIndicator(progress={book.progress/100f},
                     modifier=Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(8.dp)),
@@ -938,7 +938,7 @@ private fun ReaderScreen(
         }
     }
     if(showSettings) {
-        ModalBottomSheet(onDismissRequest={showSettings=false},containerColor=Cream) {
+        ModalBottomSheet(onDismissRequest={showSettings=false},containerColor=MaterialTheme.colorScheme.surface) {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                 .padding(horizontal=24.dp).padding(bottom=24.dp)) {
                 Text("Oxuma ayarları",fontSize=24.sp,fontWeight=FontWeight.Bold)
@@ -1039,7 +1039,7 @@ private fun ReaderScreen(
             onChanged={bookmarkRefresh++})
     }
     if(showChapters) {
-        ModalBottomSheet(onDismissRequest={showChapters=false},containerColor=Cream) {
+        ModalBottomSheet(onDismissRequest={showChapters=false},containerColor=MaterialTheme.colorScheme.surface) {
             Column(Modifier.fillMaxWidth().padding(horizontal=24.dp)) {
                 Text("Fəsillər",fontSize=24.sp,fontWeight=FontWeight.Bold)
                 LazyColumn(contentPadding=PaddingValues(bottom=36.dp)) {
