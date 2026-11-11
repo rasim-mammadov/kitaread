@@ -139,15 +139,15 @@ object UiLanguage {
         "Oxu parametrləri" to Pair("Настройки чтения","Reading settings"),
         "Oxuma ayarları" to Pair("Настройки чтения","Reading settings"),
         "Kitabın öz dili dəyişdirilmir." to Pair("Язык содержимого книги не изменяется.","Book content language is not changed."),
-        "Dark" to Pair("Тёмная","Qaranlıq"),
-        "Light" to Pair("Светлая","Açıq"),
+        "Dark" to Pair("Тёмная","Dark"),
+        "Light" to Pair("Светлая","Light"),
         "Sepia" to Pair("Сепия","Sepia"),
-        "Paper" to Pair("Бумага","Kağız"),
-        "Warm" to Pair("Тёплая","İsti"),
-        "Sage" to Pair("Шалфей","Adaçayı"),
-        "Ocean" to Pair("Океан","Okean"),
-        "Midnight" to Pair("Полночь","Gecəyarısı"),
-        "Graphite" to Pair("Графит","Qrafit"),
+        "Paper" to Pair("Бумага","Paper"),
+        "Warm" to Pair("Тёплая","Warm"),
+        "Sage" to Pair("Шалфей","Sage"),
+        "Ocean" to Pair("Океан","Ocean"),
+        "Midnight" to Pair("Полночь","Midnight"),
+        "Graphite" to Pair("Графит","Graphite"),
         "AMOLED" to Pair("AMOLED","AMOLED"),
         "3.3.3 Preview · Offline EPUB / PDF / CBZ" to Pair("Версия 3.5 · EPUB / PDF / CBZ / Markdown офлайн","3.5 Preview · Offline EPUB / PDF / CBZ / Markdown"),
         "Axtarışı bağla" to Pair("Закрыть поиск","Close search"),
@@ -161,6 +161,67 @@ object UiLanguage {
         "Kitabxana" to Pair("Библиотека","Library"),
         "Məlumatlar" to Pair("Данные","Data"),
         "Haqqında" to Pair("О приложении","About")
+        "Leaf Reader-dən çıxmaq istəyirsən?" to Pair("Выйти из Leaf Reader?","Exit Leaf Reader?"),
+        "Kitabxanan və oxuma mövqeyin saxlanılacaq." to Pair("Библиотека и позиция чтения будут сохранены.","Your library and reading position will be saved."),
+        "Qlobal Reader Theme seçimi Appearance bölməsindədir." to Pair("Общая тема чтения находится в разделе «Оформление».","Global reader theme is available in Appearance."),
+        "Şrift, sətirarası məsafə, ekran istiqaməti və zoom kitabın daxilindəki Aa menyusundan dəyişdirilir." to Pair("Размер шрифта, интервал, ориентация и масштаб настраиваются через Aa внутри книги.","Font size, spacing, orientation and zoom are adjusted from Aa inside a book."),
+        "Kitabxanadakı tema oxuyucuda da tətbiq edilir." to Pair("В читалке используется тема библиотеки.","Reader uses the library theme."),
+        "Kitab üçün ayrıca tema seçilib." to Pair("Для чтения выбрана отдельная тема.","Separate reader theme selected."),
+        "Seçilib" to Pair("Выбрано","Selected"),
+        "Seç" to Pair("Выбрать","Choose"),
+        "Axtarılır…" to Pair("Поиск…","Searching…"),
+        "Ən azı 2 simvol daxil et" to Pair("Введите хотя бы 2 символа","Enter at least 2 characters"),
+        "Yenilə" to Pair("Обновить","Update"),
+        "Kitab Kəşfiyyatçısı" to Pair("Исследователь книг","Book Explorer"),
+        "Elmi fantastika" to Pair("Научная фантастика","Science fiction"),
+        "Fantastika" to Pair("Фэнтези","Fantasy"),
+        "Dram" to Pair("Драма","Drama"),
+        "Elm" to Pair("Наука","Science"),
+        "Tarix" to Pair("История","History"),
+        "Detektiv" to Pair("Детектив","Mystery"),
+        "Fəlsəfə" to Pair("Философия","Philosophy"),
+        "Poeziya" to Pair("Поэзия","Poetry"),
+        "Səyahət" to Pair("Путешествия","Travel"),
+        "Biznes" to Pair("Бизнес","Business"),
+        "Roman" to Pair("Роман","Novel"),
+        "Romantika" to Pair("Романтика","Romance"),
+        "Qorxu" to Pair("Ужасы","Horror"),
+        "Bioqrafiya" to Pair("Биография","Biography"),
+        "Komiks" to Pair("Комиксы","Comics"),
+        "Digər" to Pair("Другое","Other"),
+        "Naməlum" to Pair("Неизвестно","Unknown"),
+        "Kosmos Səyyahı" to Pair("Космический странник","Space Wanderer"),
+        "Cəngavər" to Pair("Рыцарь","Knight"),
+        "Dramaturq" to Pair("Драматург","Playwright"),
+        "Elm İnsanı" to Pair("Человек науки","Science Explorer"),
+        "Tarix Salnaməçisi" to Pair("Летописец","Chronicler"),
+        "Filosof" to Pair("Философ","Philosopher"),
+        "Söz Ustası" to Pair("Мастер слова","Wordsmith"),
+        "Dünya Səyyahı" to Pair("Путешественник","World Traveler"),
+        "Strateq" to Pair("Стратег","Strategist"),
+        "Hekayəçi" to Pair("Рассказчик","Storyteller"),
+        "Romantik" to Pair("Романтик","Romantic"),
+        "Qaranlıq Kəşfiyyatçısı" to Pair("Исследователь тьмы","Dark Explorer"),
+        "Həyat Salnaməçisi" to Pair("Летописец жизни","Life Chronicler"),
+        "Kadr Səyyahı" to Pair("Путешественник по кадрам","Panel Wanderer"),
+        "I · Kəşfiyyatçı" to Pair("I · Исследователь","I · Explorer"),
+        "II · Səyyah" to Pair("II · Странник","II · Wanderer"),
+        "III · Ustad" to Pair("III · Мастер","III · Master"),
+        "Kilidli" to Pair("Заблокировано","Locked"),
+        "Davamlı sürüşdürmə" to Pair("Непрерывная прокрутка","Continuous scrolling"),
+        "Məlumatların ehtiyat nüsxəsi" to Pair("Резервная копия данных","Data backup"),
+        "İrəliləyiş" to Pair("Прогресс","Progress"),
+        "Şəxsi qiymətləndirmə: " to Pair("Личная оценка: ","Personal rating: "),
+        "Şrift ölçüsü  " to Pair("Размер шрифта  ","Font size  "),
+        "Sətirarası məsafə  " to Pair("Межстрочный интервал  ","Line spacing  "),
+        "Gizlədilmiş kitablar: " to Pair("Скрытые книги: ","Hidden books: "),
+        "Bitirilmə tarixi: " to Pair("Дата завершения: ","Date completed: "),
+        "Saxlanılmış qeydlər · " to Pair("Сохранённые заметки · ","Saved notes · "),
+        "Kitab bitirildi ✓" to Pair("Книга прочитана ✓","Book finished ✓"),
+        "Əlfəcin əlavə edildi" to Pair("Закладка добавлена","Bookmark added"),
+        "Əlfəcin silindi" to Pair("Закладка удалена","Bookmark removed"),
+        "Yalnız EPUB, PDF, CBZ və Markdown dəstəklənir" to Pair("Поддерживаются только EPUB, PDF, CBZ и Markdown","Only EPUB, PDF, CBZ and Markdown are supported"),
+        "3.5 Preview · Offline EPUB / PDF / CBZ / Markdown" to Pair("Версия 3.5 · EPUB / PDF / CBZ / Markdown офлайн","3.5 Preview · Offline EPUB / PDF / CBZ / Markdown")
     )
     fun translate(text:String,language:String):String {
         if(language=="az")return when(text) {
@@ -184,6 +245,20 @@ object UiLanguage {
             else->text
         }
         dictionary[text]?.let {return if(language=="ru")it.first else it.second}
+        val dynamicPrefixes=listOf("Şrift ölçüsü  ","Sətirarası məsafə  ",
+            "Gizlədilmiş kitablar: ","Bitirilmə tarixi: ","Saxlanılmış qeydlər · ")
+        for(prefix in dynamicPrefixes) {
+            if(text.startsWith(prefix)) {
+                val translated=dictionary[prefix] ?:continue
+                return (if(language=="ru")translated.first else translated.second)+
+                    text.removePrefix(prefix)
+            }
+        }
+        if(text.contains(" · ")) {
+            return text.split(" · ").joinToString(" · ") {segment->
+                dictionary[segment]?.let {if(language=="ru")it.first else it.second} ?: segment
+            }
+        }
         // Keep numeric values and user-owned names unchanged; translate only UI prefixes.
         val numeric=Regex("""^(Fəsil|Səhifə)\s+(\d+)(.*)$""").matchEntire(text)
         if(numeric!=null) {
