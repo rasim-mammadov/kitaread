@@ -488,9 +488,14 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                     else "Kitab qeydini kitabxanadan çıxaracağıq. Orijinal fayl "+
                         "tətbiqin saxlamasında qalacaq, amma siyahıda görünməyəcək.")},
                 confirmButton={TextButton(onClick={
-                    store.removeBook(book.path,deleteMode=="delete")
-                    refreshLibrary()
-                    deleteBook=null
+                    try {
+                        store.removeBook(book.path,deleteMode=="delete")
+                        refreshLibrary()
+                        deleteBook=null
+                    }catch(e:Exception) {
+                        Toast.makeText(context,e.message ?: "Kitab silinmədi",
+                            Toast.LENGTH_LONG).show()
+                    }
                 }) {Text(if(deleteMode=="delete")"Həmişəlik sil" else "Çıxar")}},
                 dismissButton={TextButton(onClick={deleteBook=null}) {Text("Ləğv et")}}
             )
