@@ -132,6 +132,42 @@ class BookStore(private val context: Context) {
                 file.extension.lowercase() in listOf("xhtml","html","htm"))file else null
         }
     }
+    fun chapterTitles(chapters:List<File>):List<String> {
+        if(chapters.isEmpty())return emptyList()
+        val directory=chapters.first().parentFile ?:return emptyList()
+        val nav=directory.walkTopDown().filter {it.isFile &&
+            it.name.lowercase() in setOf("nav.xhtml","nav.html","toc.xhtml","toc.html",
+                "contents.xhtml","contents.html")}.firstOrNull()
+        val navLabels=mutableMapOf<String,String>()
+        if(nav!=null)try {
+            val html=nav.readText(Charsets.UTF_8)
+            val anchors=Regex("""<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>(.*?)</a>""",
+                setOf(RegexOption.IGNORE_CASE,RegexOption.DOT_MATCHES_ALL))
+            anchors.findAll(html).forEach { match ->
+                val link=java.net.URLDecoder.decode(match.groupValues[1].substringBefore('#'),"UTF-8")
+                val name=link.substringAfterLast('/').lowercase()
+                val text=match.groupValues[2].replace(Regex("<[^>]*>"),"")
+                    .replace("&amp;","&").replace("&nbsp;"," ")
+                    .replace("&lt;","<").replace("&gt;",">")
+                    .trim().replace(Regex("\\s+")," ")
+                if(name.isNotBlank()&&text.isNotBlank())navLabels.putIfAbsent(name,text)
+            }
+        }catch(_:Exception){}
+        return chapters.mapIndexed {i,file->
+            val candidate=navLabels[file.name.lowercase()]
+            if(!candidate.isNullOrBlank())candidate.take(80) else {
+                val heading=try {
+                    val page=file.readText(Charsets.UTF_8).take(20000)
+                    val match=Regex("""<(?:h1|h2|title)\b[^>]*>(.*?)</(?:h1|h2|title)>""",
+                        setOf(RegexOption.IGNORE_CASE,RegexOption.DOT_MATCHES_ALL)).find(page)
+                    match?.groupValues?.getOrNull(1)?.replace(Regex("<[^>]*>"),"")
+                        ?.trim()?.take(80)
+                }catch(_:Exception){null}
+                heading?.takeIf {it.isNotBlank()} ?:
+                    file.nameWithoutExtension.replace('_',' ').ifBlank {"Fəsil ${i+1}"}
+            }
+        }
+    }
     private fun xml(stream:java.io.InputStream):List<Pair<String,Map<String,String>>> {
         val parser=Xml.newPullParser().apply {setInput(stream,"UTF-8")}
         val items=mutableListOf<Pair<String,Map<String,String>>>()
