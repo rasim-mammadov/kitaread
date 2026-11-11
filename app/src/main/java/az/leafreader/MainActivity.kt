@@ -137,6 +137,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         libraryVersion++
     }
     var showDashboard by remember {mutableStateOf(false)}
+    var showJournal by remember {mutableStateOf(false)}
     var showSettingsHome by remember {mutableStateOf(false)}
     var showAdvancedFilters by remember {mutableStateOf(false)}
     var showSearch by remember {mutableStateOf(false)}
@@ -207,6 +208,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
             showAdvancedFilters ->showAdvancedFilters=false
             showGlobalBookmarks ->showGlobalBookmarks=false
             showDashboard ->showDashboard=false
+            showJournal ->showJournal=false
             showSearch ->{showSearch=false;search=""}
             else ->showExitConfirmation=true
         }
@@ -266,11 +268,35 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         }catch(e:Exception){Toast.makeText(context,UiLanguage.translate(e.message ?: "Import xətası",
                     store.setting().getString("language","az") ?: "az"),Toast.LENGTH_LONG).show()}
     }
+    val journalMarkdownExport=rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/markdown")) {uri->
+        if(uri!=null)try {
+            context.contentResolver.openOutputStream(uri)?.use {
+                it.write(ReadingJournal.exportMarkdown(store.records()).toByteArray(Charsets.UTF_8))
+            } ?:error("Yazma icazəsi yoxdur")
+        }catch(e:Exception){
+            Toast.makeText(context,e.message ?: "Export error",Toast.LENGTH_LONG).show()
+        }
+    }
+    val journalJsonExport=rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")) {uri->
+        if(uri!=null)try {
+            context.contentResolver.openOutputStream(uri)?.use {
+                it.write(ReadingJournal.exportJson(store.records()).toByteArray(Charsets.UTF_8))
+            } ?:error("Yazma icazəsi yoxdur")
+        }catch(e:Exception){
+            Toast.makeText(context,e.message ?: "Export error",Toast.LENGTH_LONG).show()
+        }
+    }
     CompositionLocalProvider(LocalUiLanguage provides language) {
     MaterialTheme(colorScheme=appColors,
         shapes=Shapes(medium=RoundedCornerShape(16.dp),large=RoundedCornerShape(24.dp))) {
         if(selected==null && showDashboard) {
             ReadingDashboard(store,onBack={showDashboard=false})
+        } else if(selected==null && showJournal) {
+            ReadingJournalScreen(store,onBack={showJournal=false;refreshLibrary()},
+                onExportMarkdown={journalMarkdownExport.launch("leaf-reader-journal.md")},
+                onExportJson={journalJsonExport.launch("leaf-reader-knowledge.json")})
         } else if(selected==null) {
             Scaffold(
                 contentWindowInsets=WindowInsets.safeDrawing,
@@ -336,6 +362,13 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 Icon(Icons.Default.BarChart,null,Modifier.size(17.dp))
                                 Spacer(Modifier.width(4.dp))
                                 Text(ui("Statistika"),fontSize=11.sp)
+                            }
+                            OutlinedButton(onClick={showJournal=true},
+                                modifier=Modifier.weight(1f),
+                                contentPadding=PaddingValues(horizontal=5.dp,vertical=6.dp)) {
+                                Icon(Icons.Default.EditNote,null,Modifier.size(17.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(ui("Gündəlik"),fontSize=11.sp)
                             }
                             OutlinedButton(onClick={showGlobalBookmarks=true},
                                 modifier=Modifier.weight(1f),
