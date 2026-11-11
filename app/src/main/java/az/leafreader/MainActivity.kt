@@ -12,12 +12,14 @@ import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -205,6 +207,7 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
 
 @Composable
 private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
+    BackHandler(onBack=onExit)
     val context=LocalContext.current
     val prefs=remember {store.setting()}
     var theme by remember {mutableStateOf(prefs.getString("theme","Sepia") ?: "Sepia")}
