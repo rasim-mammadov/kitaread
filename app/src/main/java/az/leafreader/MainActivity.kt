@@ -221,7 +221,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         .padding(start=18.dp,end=18.dp,top=10.dp,bottom=4.dp),
                         verticalArrangement=Arrangement.spacedBy(8.dp)) {
                         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                            Text("Leaf Reader",fontSize=29.sp,fontWeight=FontWeight.Bold,
+                            Text(ui("Leaf Reader"),fontSize=29.sp,fontWeight=FontWeight.Bold,
                                 color=MaterialTheme.colorScheme.onBackground,
                                 modifier=Modifier.weight(1f))
                             IconButton(onClick={showSearch=!showSearch}) {
@@ -238,21 +238,21 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 contentPadding=PaddingValues(horizontal=5.dp,vertical=6.dp)) {
                                 Icon(Icons.Default.BarChart,null,Modifier.size(17.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Statistika",fontSize=11.sp)
+                                Text(ui("Statistika"),fontSize=11.sp)
                             }
                             OutlinedButton(onClick={showGlobalBookmarks=true},
                                 modifier=Modifier.weight(1f),
                                 contentPadding=PaddingValues(horizontal=5.dp,vertical=6.dp)) {
                                 Icon(Icons.Default.Bookmarks,null,Modifier.size(17.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Əlfəcinlər",fontSize=11.sp)
+                                Text(ui("Əlfəcinlər"),fontSize=11.sp)
                             }
                             OutlinedButton(onClick={showAdvancedFilters=true},
                                 modifier=Modifier.weight(1f),
                                 contentPadding=PaddingValues(horizontal=5.dp,vertical=6.dp)) {
                                 Icon(Icons.Default.Tune,null,Modifier.size(17.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Filtrlər",fontSize=11.sp)
+                                Text(ui("Filtrlər"),fontSize=11.sp)
                             }
                         }
                     }
@@ -270,7 +270,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         OutlinedTextField(
                             search,{search=it},modifier=Modifier.fillMaxWidth(),
                             singleLine=true,shape=RoundedCornerShape(18.dp),
-                            placeholder={Text("Kitab və müəllif axtar...")},
+                            placeholder={Text(ui("Kitab və müəllif axtar..."))},
                             leadingIcon={Icon(Icons.Default.Search,null)},
                             trailingIcon={
                                 IconButton(onClick={search="";showSearch=false}) {
@@ -283,24 +283,24 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                     Row(horizontalArrangement=Arrangement.spacedBy(7.dp),
                         modifier=Modifier.horizontalScroll(rememberScrollState())) {
                         listOf("Hamısı","Oxunur","Oxunmayıb","Bitirilib").forEach { label->
-                            FilterChip(selected=filter==label,onClick={filter=label},label={Text(label)})
+                            FilterChip(selected=filter==label,onClick={filter=label},label={Text(ui(label))})
                         }
                     }
                     Spacer(Modifier.height(5.dp))
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                        Text("Kitabxanam",color=MaterialTheme.colorScheme.onSurfaceVariant,
+                        Text(ui("Kitabxanam"),color=MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier=Modifier.weight(1f),fontSize=13.sp)
                         Box {
                             TextButton(onClick={showSortMenu=true}) {
                                 Icon(Icons.Default.Sort,null,Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text(sortMode,fontSize=12.sp)
+                                Text(ui(sortMode),fontSize=12.sp)
                             }
                             DropdownMenu(expanded=showSortMenu,
                                 onDismissRequest={showSortMenu=false}) {
                                 listOf("Son oxunanlar","Əlavə edilmə tarixi",
                                     "A–Z","Z–A","Progress").forEach {option->
-                                    DropdownMenuItem(text={Text(option)},onClick={
+                                    DropdownMenuItem(text={Text(ui(option))},onClick={
                                         sortMode=option
                                         store.setting().edit().putString("librarySort",option).apply()
                                         showSortMenu=false
@@ -344,14 +344,14 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 tint=MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.width(8.dp))
                             Column(Modifier.weight(1f)) {
-                                Text("Oxumağa davam et",
+                                Text(ui("Oxumağa davam et"),
                                     fontSize=12.sp,color=MaterialTheme.colorScheme.primary)
                                 Text(recent.title,maxLines=1,
                                     overflow=TextOverflow.Ellipsis,
                                     color=MaterialTheme.colorScheme.onBackground,
                                     fontWeight=FontWeight.SemiBold)
                             }
-                            Text("${recent.progress}%",fontSize=12.sp,
+                            Text(ui("${recent.progress}%"),fontSize=12.sp,
                                 color=MaterialTheme.colorScheme.onBackground)
                         }
                     }
@@ -360,17 +360,17 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                             Column(horizontalAlignment=Alignment.CenterHorizontally) {
                                 Icon(Icons.Default.AutoStories,null,Modifier.size(64.dp),tint=Accent)
                                 Spacer(Modifier.height(16.dp))
-                                Text("Burada hələ kitab yoxdur",fontSize=20.sp,fontWeight=FontWeight.SemiBold)
+                                Text(ui("Burada hələ kitab yoxdur"),fontSize=20.sp,fontWeight=FontWeight.SemiBold)
                                 Spacer(Modifier.height(8.dp))
-                                Text(if(books.isEmpty())"EPUB, PDF və ya CBZ əlavə et"
-                                    else "Axtarış və filtrlərə uyğun kitab tapılmadı",
+                                Text(ui(if(books.isEmpty())"EPUB, PDF və ya CBZ əlavə et"
+                                    else "Axtarış və filtrlərə uyğun kitab tapılmadı"),
                                     color=MaterialTheme.colorScheme.onSurfaceVariant)
                                 if(books.isNotEmpty()) {
                                     TextButton(onClick={
                                         search="";filter="Hamısı"
                                         genreFilter=GenreCatalog.UNKNOWN
                                         collectionFilter="";formatFilter="Hamısı"
-                                    }) {Text("Filtrləri sıfırla")}
+                                    }) {Text(ui("Filtrləri sıfırla"))}
                                 }
                             }
                         }
@@ -427,13 +427,13 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         if(showExitConfirmation) {
             AlertDialog(
                 onDismissRequest={showExitConfirmation=false},
-                title={Text("Leaf Reader-dən çıxmaq istəyirsən?")},
-                text={Text("Kitabxanan və oxuma mövqeyin saxlanılacaq.")},
+                title={Text(ui("Leaf Reader-dən çıxmaq istəyirsən?"))},
+                text={Text(ui("Kitabxanan və oxuma mövqeyin saxlanılacaq."))},
                 confirmButton={TextButton(onClick={
                     showExitConfirmation=false
                     (context as? ComponentActivity)?.finish()
-                }) {Text("Çıx")}},
-                dismissButton={TextButton(onClick={showExitConfirmation=false}) {Text("Ləğv et")}}
+                }) {Text(ui("Çıx"))}},
+                dismissButton={TextButton(onClick={showExitConfirmation=false}) {Text(ui("Ləğv et"))}}
             )
         }
         detailsBook?.let {book->
@@ -462,7 +462,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                             detailsBook=book
                             menuBook=null
                         },modifier=Modifier.fillMaxWidth()) {
-                            Text("Kitab detalları və status")
+                            Text(ui("Kitab detalları və status"))
                         }
                         TextButton(onClick={
                             store.hideBook(book.path,true)
@@ -471,33 +471,33 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         },modifier=Modifier.fillMaxWidth()) {
                             Icon(Icons.Default.VisibilityOff,null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Kitabxanadan gizlət")
+                            Text(ui("Kitabxanadan gizlət"))
                         }
                         TextButton(onClick={
                             deleteMode="remove";deleteBook=book;menuBook=null
                         },modifier=Modifier.fillMaxWidth()) {
-                            Text("Kitabxanadan çıxar (fayl qalsın)")
+                            Text(ui("Kitabxanadan çıxar (fayl qalsın)"))
                         }
                         TextButton(onClick={
                             deleteMode="delete";deleteBook=book;menuBook=null
                         },modifier=Modifier.fillMaxWidth()) {
-                            Text("Kitab və məlumatlarını tamamilə sil")
+                            Text(ui("Kitab və məlumatlarını tamamilə sil"))
                         }
                     }
                 },
-                confirmButton={TextButton(onClick={menuBook=null}) {Text("Bağla")}}
+                confirmButton={TextButton(onClick={menuBook=null}) {Text(ui("Bağla"))}}
             )
         }
         deleteBook?.let {book->
             AlertDialog(
                 onDismissRequest={deleteBook=null},
-                title={Text(if(deleteMode=="delete")"Kitab həmişəlik silinsin?"
-                    else "Kitabxanadan çıxarılsın?")},
-                text={Text(if(deleteMode=="delete")
+                title={Text(ui(if(deleteMode=="delete")"Kitab həmişəlik silinsin?"
+                    else "Kitabxanadan çıxarılsın?"))},
+                text={Text(ui(if(deleteMode=="delete")
                     "Kitab faylı, əlfəcinlər, oxuma tarixçəsi və qeydləri silinəcək. "+
                         "Bu əməliyyat geri qaytarıla bilməz."
                     else "Kitab qeydini kitabxanadan çıxaracağıq. Orijinal fayl "+
-                        "tətbiqin saxlamasında qalacaq, amma siyahıda görünməyəcək.")},
+                        "tətbiqin saxlamasında qalacaq, amma siyahıda görünməyəcək."))},
                 confirmButton={TextButton(onClick={
                     try {
                         store.removeBook(book.path,deleteMode=="delete")
@@ -507,8 +507,8 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         Toast.makeText(context,e.message ?: "Kitab silinmədi",
                             Toast.LENGTH_LONG).show()
                     }
-                }) {Text(if(deleteMode=="delete")"Həmişəlik sil" else "Çıxar")}},
-                dismissButton={TextButton(onClick={deleteBook=null}) {Text("Ləğv et")}}
+                }) {Text(ui(if(deleteMode=="delete")"Həmişəlik sil" else "Çıxar"))}},
+                dismissButton={TextButton(onClick={deleteBook=null}) {Text(ui("Ləğv et"))}}
             )
         }
     }
@@ -542,15 +542,15 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
                 val genre=metadata?.optString("genre",GenreCatalog.UNKNOWN).orEmpty()
                 if(author.isNotBlank()) Text(author,color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp,
                     maxLines=1,overflow=TextOverflow.Ellipsis)
-                Text(book.status+"  •  "+book.type.uppercase()+
-                    (if(genre.isNotBlank() && genre!=GenreCatalog.UNKNOWN)"  •  $genre" else ""),
+                Text(ui(book.status+"  •  "+book.type.uppercase()+
+                    (if(genre.isNotBlank() && genre!=GenreCatalog.UNKNOWN)"  •  $genre" else "")),
                     color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp,maxLines=1,
                     overflow=TextOverflow.Ellipsis)
                 LinearProgressIndicator(progress={book.progress/100f},
                     modifier=Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(8.dp)),
                     color=MaterialTheme.colorScheme.primary,
                     trackColor=MaterialTheme.colorScheme.surfaceVariant)
-                Text(book.progress.toString()+"% oxunub",fontSize=12.sp,
+                Text(ui(book.progress.toString()+"% oxunub"),fontSize=12.sp,
                     color=MaterialTheme.colorScheme.primary)
             }
             IconButton(onClick=onMore) {Icon(Icons.Default.MoreVert,"Kitab ayarları")}
@@ -955,15 +955,15 @@ private fun ReaderScreen(
                             Icon(Icons.Default.Bookmarks,"Əlfəcinlərim",tint=textColor)
                         }
                         FilledTonalIconButton(onClick={showSettings=true},modifier=Modifier.size(48.dp)) {
-                            Text("Aa",fontSize=18.sp,fontWeight=FontWeight.Bold)
+                            Text(ui("Aa"),fontSize=18.sp,fontWeight=FontWeight.Bold)
                         }
                     }
                 }
             }
             if(!chrome) {
-                Text(liveProgress.toString()+"%",modifier=Modifier.align(Alignment.BottomStart)
+                Text(ui(liveProgress.toString()+"%"),modifier=Modifier.align(Alignment.BottomStart)
                     .padding(start=24.dp,bottom=12.dp),fontSize=12.sp,color=textColor.copy(alpha=0.6f))
-                Text(if(isTextBook)"Fəsil "+(chapter+1) else (chapter+1).toString()+"/"+pageCount,
+                Text(ui(if(isTextBook)"Fəsil "+(chapter+1) else (chapter+1).toString()+"/"+pageCount),
                     modifier=Modifier.align(Alignment.BottomEnd).padding(end=24.dp,bottom=12.dp),
                     fontSize=12.sp,color=textColor.copy(alpha=0.6f))
             }
@@ -971,8 +971,8 @@ private fun ReaderScreen(
                 Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(paper.copy(alpha=0.97f))
                     .padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
                     IconButton(onClick={turn(-1)}) {Icon(Icons.AutoMirrored.Filled.ArrowBack,"Əvvəlki",tint=textColor)}
-                    Text(if(isTextBook)"Fəsil "+(chapter+1)+"/"+chapterFiles.size
-                        else "Səhifə "+(chapter+1)+"/"+pageCount,
+                    Text(ui(if(isTextBook)"Fəsil "+(chapter+1)+"/"+chapterFiles.size
+                        else "Səhifə "+(chapter+1)+"/"+pageCount),
                         modifier=Modifier.weight(1f),color=textColor,fontSize=13.sp)
                     IconButton(onClick={turn(1)}) {Icon(Icons.AutoMirrored.Filled.ArrowForward,"Növbəti",tint=textColor)}
                 }
@@ -983,8 +983,8 @@ private fun ReaderScreen(
         ModalBottomSheet(onDismissRequest={showSettings=false},containerColor=MaterialTheme.colorScheme.surface) {
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                 .padding(horizontal=24.dp).padding(bottom=24.dp)) {
-                Text("Oxuma ayarları",fontSize=24.sp,fontWeight=FontWeight.Bold)
-                Text("Ekran istiqaməti",fontWeight=FontWeight.SemiBold)
+                Text(ui("Oxuma ayarları"),fontSize=24.sp,fontWeight=FontWeight.Bold)
+                Text(ui("Ekran istiqaməti"),fontWeight=FontWeight.SemiBold)
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     listOf("Auto","Portrait","Landscape").forEach {option->
                         FilterChip(
@@ -993,17 +993,17 @@ private fun ReaderScreen(
                                 rotationMode=option
                                 prefs.edit().putString("screenOrientation",option).apply()
                             },
-                            label={Text(when(option) {
+                            label={Text(ui(when(option) {
                                 "Auto"->"Avtomatik"
                                 "Portrait"->"Şaquli"
                                 else->"Üfüqi"
-                            })}
+                            }))}
                         )
                     }
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                    Text("Qlobal temanı izlə",modifier=Modifier.weight(1f),
+                    Text(ui("Qlobal temanı izlə"),modifier=Modifier.weight(1f),
                         fontWeight=FontWeight.SemiBold)
                     Switch(checked=readerFollowsApp,onCheckedChange={follow->
                         readerFollowsApp=follow
@@ -1013,11 +1013,11 @@ private fun ReaderScreen(
                         onThemeChange(theme)
                     })
                 }
-                Text(if(readerFollowsApp)
+                Text(ui(if(readerFollowsApp)
                     "Kitabxanadakı tema oxuyucuda da tətbiq edilir."
-                    else "Kitab üçün ayrıca tema seçilib.",fontSize=12.sp,
+                    else "Kitab üçün ayrıca tema seçilib."),fontSize=12.sp,
                     color=MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Oxuma teması · 10 hazır seçim",fontWeight=FontWeight.SemiBold)
+                Text(ui("Oxuma teması · 10 hazır seçim"),fontWeight=FontWeight.SemiBold)
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     ReadingThemes.presets.forEach {t->
@@ -1027,17 +1027,17 @@ private fun ReaderScreen(
                             prefs.edit().putString("readerTheme",t.name)
                                 .putBoolean("readerFollowsApp",false).apply()
                             readerFollowsApp=false
-                        },label={Text(t.name)})
+                        },label={Text(ui(t.name))})
                     }
                 }
                 Spacer(Modifier.height(16.dp))
                 if(isTextBook) {
-                    Text("Şrift ölçüsü  "+font.toInt()+" px",fontWeight=FontWeight.SemiBold)
+                    Text(ui("Şrift ölçüsü  "+font.toInt()+" px"),fontWeight=FontWeight.SemiBold)
                     Slider(font,{font=it; prefs.edit().putInt("fontSize",it.toInt()).apply()},valueRange=12f..34f)
-                    Text("Sətirarası məsafə  "+line.toInt()+"%",fontWeight=FontWeight.SemiBold)
+                    Text(ui("Sətirarası məsafə  "+line.toInt()+"%"),fontWeight=FontWeight.SemiBold)
                     Slider(line,{line=it; prefs.edit().putInt("lineSpacing",it.toInt()).apply()},valueRange=110f..210f)
                     Spacer(Modifier.height(12.dp))
-                    Text("Mətnin düzülüşü",fontWeight=FontWeight.SemiBold)
+                    Text(ui("Mətnin düzülüşü"),fontWeight=FontWeight.SemiBold)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                         listOf("left" to "Soldan", "justify" to "İki kənara",
@@ -1048,37 +1048,37 @@ private fun ReaderScreen(
                                     alignment=value
                                     prefs.edit().putString("textAlignment",value).apply()
                                 },
-                                label={Text(label)}
+                                label={Text(ui(label))}
                             )
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    Text("Oxuma rejimi",fontWeight=FontWeight.SemiBold)
+                    Text(ui("Oxuma rejimi"),fontWeight=FontWeight.SemiBold)
                     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                         FilterChip(mode=="pages",{mode="pages";prefs.edit().putString("epubMode",mode).apply()},
-                            label={Text("Səhifələmə")})
+                            label={Text(ui("Səhifələmə"))})
                         FilterChip(mode=="scroll",{mode="scroll";prefs.edit().putString("epubMode",mode).apply()},
-                            label={Text("Continuous scroll")})
+                            label={Text(ui("Continuous scroll"))})
                     }
                 }
                 HorizontalDivider(Modifier.padding(vertical=12.dp))
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                    Text("Swipe ilə səhifə çevirmə",modifier=Modifier.weight(1f))
+                    Text(ui("Swipe ilə səhifə çevirmə"),modifier=Modifier.weight(1f))
                     Switch(swipe,{swipe=it;prefs.edit().putBoolean("swipeTurn",it).apply()})
                 }
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                    Text("Sağ-sol düymələri göstər",modifier=Modifier.weight(1f))
+                    Text(ui("Sağ-sol düymələri göstər"),modifier=Modifier.weight(1f))
                     Switch(arrows,{arrows=it;prefs.edit().putBoolean("sideButtons",it).apply()})
                 }
                 if(!isTextBook) {
                     var fit by remember {mutableStateOf(prefs.getBoolean("fitWidth",false))}
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                        Text("Fit to Width",modifier=Modifier.weight(1f))
+                        Text(ui("Fit to Width"),modifier=Modifier.weight(1f))
                         Switch(fit,{fit=it;prefs.edit().putBoolean("fitWidth",it).apply()})
                     }
                 }
                 Button(onClick={showSettings=false},modifier=Modifier.fillMaxWidth().height(52.dp)) {
-                    Text("Oxumağa davam et")
+                    Text(ui("Oxumağa davam et"))
                 }
             }
         }
@@ -1137,7 +1137,7 @@ private fun ReaderScreen(
     if(showChapters) {
         ModalBottomSheet(onDismissRequest={showChapters=false},containerColor=MaterialTheme.colorScheme.surface) {
             Column(Modifier.fillMaxWidth().padding(horizontal=24.dp)) {
-                Text("Fəsillər",fontSize=24.sp,fontWeight=FontWeight.Bold)
+                Text(ui("Fəsillər"),fontSize=24.sp,fontWeight=FontWeight.Bold)
                 LazyColumn(contentPadding=PaddingValues(bottom=36.dp)) {
                     items(chapterFiles.size) {index->
                         ListItem(
