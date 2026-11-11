@@ -171,8 +171,14 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                                 val title=GenreCatalog.title(genre)
                                 Row(Modifier.fillMaxWidth(),
                                     verticalAlignment=Alignment.CenterVertically) {
-                                    Text("${title} · ${genre} · ${count} kitab",
-                                        modifier=Modifier.weight(1f),fontSize=13.sp)
+                                    Column(Modifier.weight(1f)) {
+                                        Text("${title} · ${genre}",fontSize=13.sp)
+                                        Text("${GenreCatalog.level(count)} · ${count} kitab"+
+                                            (GenreCatalog.nextMilestone(count)?.let {
+                                                " · növbəti: ${it}"
+                                            } ?: ""),
+                                            color=Color.Gray,fontSize=11.sp)
+                                    }
                                     TextButton(onClick={
                                         chosen=title
                                         store.setting().edit().putString("readerTitle",title).apply()
