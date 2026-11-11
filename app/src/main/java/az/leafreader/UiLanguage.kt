@@ -277,6 +277,23 @@ object UiLanguage {
         "100 saat oxu" to Pair("100 часов чтения","100 reading hours"),
         "Janr üzrə irəliləyiş" to Pair("Прогресс по жанрам","Genre progress"),
         "Hələ janr üzrə bitirilmiş kitab yoxdur" to Pair("Пока нет завершённых книг с жанром","No finished books with a genre yet"),
+        "Oxu gündəliyi" to Pair("Дневник чтения","Reading journal"),
+        "Gündəlik" to Pair("Дневник","Journal"),
+        "Sitatlar və qeydlər" to Pair("Цитаты и заметки","Quotes & notes"),
+        "Rəylər" to Pair("Отзывы","Reviews"),
+        "Kitab seç" to Pair("Выбрать книгу","Select a book"),
+        "Markdown ixrac et" to Pair("Экспорт Markdown","Export Markdown"),
+        "JSON ixrac et" to Pair("Экспорт JSON","Export JSON"),
+        "Bu günün oxu qeydi" to Pair("Сегодняшняя запись","Today's reading entry"),
+        "Gündəliyə əlavə et" to Pair("Добавить в дневник","Add to journal"),
+        "Kitab haqqında şəxsi rəy" to Pair("Личный отзыв о книге","Personal book review"),
+        "Rəyi saxla" to Pair("Сохранить отзыв","Save review"),
+        "Gündəlik qeydi silinsin?" to Pair("Удалить запись дневника?","Delete journal entry?"),
+        "Boş gündəlik qeydi saxlanılmır" to Pair("Нельзя сохранить пустую запись","Cannot save an empty journal entry"),
+        "Kitab tapılmadı" to Pair("Книга не найдена","Book not found"),
+        "Sil" to Pair("Удалить","Delete"),
+        "Şəxsi qeyd" to Pair("Личная заметка","Personal note"),
+        "Fəsil" to Pair("Глава","Chapter"),
         "Focus rejimi" to Pair("Режим фокусировки","Focus mode"),
         "Focus rejimindən çıx" to Pair("Выйти из режима фокусировки","Exit focus mode"),
         "Oxu taymeri" to Pair("Таймер чтения","Reading timer"),
@@ -311,9 +328,9 @@ object UiLanguage {
         "Seriya" to Pair("Серия","Series"),
         "Ağıllı axtarış" to Pair("Умный поиск","Smart search"),
         "Kitab, müəllif, seriya, janr, kolleksiya axtar..." to Pair("Поиск книги, автора, серии, жанра, коллекции...","Search title, author, series, genre, collection..."),
-        "3.8 Preview · Offline EPUB / PDF / CBZ / Markdown" to Pair(
-            "Версия 3.8 · Без интернета · EPUB / PDF / CBZ / Markdown",
-            "3.8 Preview · Offline EPUB / PDF / CBZ / Markdown")
+        "3.9 Preview · Offline EPUB / PDF / CBZ / Markdown" to Pair(
+            "Версия 3.9 · Без интернета · EPUB / PDF / CBZ / Markdown",
+            "3.9 Preview · Offline EPUB / PDF / CBZ / Markdown")
     )
     fun translate(text:String,language:String):String {
         if(language=="az")return when(text) {
@@ -332,8 +349,8 @@ object UiLanguage {
             "Reader Theme tətbiq temasını izləsin"->"Oxuyucu tətbiqin temasını izləsin"
             "Qlobal Reader Theme seçimi Appearance bölməsindədir."->
                 "Oxuyucunun ümumi temasını Görünüş bölməsindən seç."
-            "3.8 Preview · Offline EPUB / PDF / CBZ / Markdown"->
-                "3.8 İlkin versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
+            "3.9 Preview · Offline EPUB / PDF / CBZ / Markdown"->
+                "3.9 İlkin versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
             "3.5 Preview · Offline EPUB / PDF / CBZ / Markdown"->
                 "3.5 İlkin versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
             "3.3.3 Preview · Offline EPUB / PDF / CBZ"->
