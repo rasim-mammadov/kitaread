@@ -241,6 +241,39 @@ class BookStore(private val context: Context) {
         }catch(_:Exception){Triple("","",emptyList())}
     }
 
+    /**
+     * Migrates legacy EPUB metadata without changing user-edited fields.
+     * A one-time marker keeps subsequent launches quick and offline.
+     */
+    fun enrichLegacyEpub():Int {
+        val current=records()
+        var modified=0
+        current.forEach {item->
+            if(item.optString("type")!="epub" || item.optBoolean("metadataChecked",false))
+                return@forEach
+            val path=item.optString("path")
+            val file=File(context.filesDir,path).canonicalFile
+            val root=context.filesDir.canonicalFile
+            if(file.parentFile==root && file.isFile) {
+                val (title,author,subjects)=epubMetadata(file)
+                if(item.optString("author").isBlank() && author.isNotBlank())
+                    item.put("author",author)
+                // Respect previously edited titles and user-defined genres.
+                if((item.optString("genre").isBlank() ||
+                        item.optString("genre")==GenreCatalog.UNKNOWN) &&
+                    subjects.isNotEmpty()) {
+                    item.put("genre",GenreCatalog.fromSubjects(subjects))
+                }
+                if(item.optJSONArray("subjects")==null)
+                    item.put("subjects",JSONArray(subjects))
+            }
+            item.put("metadataChecked",true)
+            modified++
+        }
+        if(modified>0)persist(current)
+        return modified
+    }
+
     fun import(uri:Uri):String {
         val title=context.contentResolver.query(uri,null,null,null,null)?.use {cursor->
             if(cursor.moveToFirst()) {
@@ -260,6 +293,7 @@ class BookStore(private val context: Context) {
             .put("author",meta.second)
             .put("genre",GenreCatalog.fromSubjects(meta.third))
             .put("subjects",JSONArray(meta.third))
+            .put("metadataChecked",true)
             .put("path",id).put("type",extension)
             .put("page",0).put("scrollFraction",0.0).put("progress",0).put("status","Oxunmayıb")
         CoverExtractor.extract(context,file,extension,id)?.let {item.put("cover",it)}
