@@ -64,7 +64,7 @@ fun LibrarySettingsSheet(
                 if(section!="Settings")IconButton(onClick={section="Settings"}) {
                     Icon(Icons.Default.ArrowBack,"Geri")
                 }
-                Text(section,fontSize=25.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
+                Text(ui(section),fontSize=25.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))
                 IconButton(onClick=onClose) {Icon(Icons.Default.Close,"Bağla")}
             }
             HorizontalDivider()
@@ -76,14 +76,14 @@ fun LibrarySettingsSheet(
                         "Library" to "Sıralama və gizli kitablar",
                         "Data & Backup" to "Export / Import",
                         "About" to "Tətbiq məlumatları").forEach { (title,subtitle)->
-                        ListItem(headlineContent={Text(title)},supportingContent={Text(subtitle)},
+                        ListItem(headlineContent={Text(ui(title))},supportingContent={Text(ui(subtitle))},
                             trailingContent={Icon(Icons.Default.ChevronRight,null)},
                             modifier=Modifier.clickable {section=title})
                         HorizontalDivider()
                     }
                 }
                 if(section=="Appearance") {
-                    Text("App Theme — bütün ekranlar",fontWeight=FontWeight.SemiBold)
+                    Text(ui("App Theme — bütün ekranlar"),fontWeight=FontWeight.SemiBold)
                     ReadingThemes.presets.chunked(2).forEach {pair->
                         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                             pair.forEach {t->
@@ -92,9 +92,9 @@ fun LibrarySettingsSheet(
                                     border=BorderStroke(if(appTheme==t.name)2.dp else 1.dp,
                                         if(appTheme==t.name)Color(0xFF267A71) else Color.Gray)) {
                                     Row(Modifier.padding(12.dp),verticalAlignment=Alignment.CenterVertically) {
-                                        Text("Aa",fontSize=18.sp,color=t.ink)
+                                        Text(ui("Aa"),fontSize=18.sp,color=t.ink)
                                         Spacer(Modifier.width(8.dp))
-                                        Text(t.name,color=t.ink,fontSize=13.sp)
+                                        Text(ui(t.name),color=t.ink,fontSize=13.sp)
                                     }
                                 }
                             }
@@ -102,21 +102,21 @@ fun LibrarySettingsSheet(
                         }
                     }
                     Row(verticalAlignment=Alignment.CenterVertically) {
-                        Text("Reader Theme tətbiq temasını izləsin",
+                        Text(ui("Reader Theme tətbiq temasını izləsin"),
                             modifier=Modifier.weight(1f))
                         Switch(follow,{
                             follow=it;prefs.edit().putBoolean("readerFollowsApp",it).apply()
                         })
                     }
                     if(!follow) {
-                        Text("Kitab üçün ayrıca tema",fontWeight=FontWeight.SemiBold)
+                        Text(ui("Kitab üçün ayrıca tema"),fontWeight=FontWeight.SemiBold)
                         ReadingThemes.presets.chunked(3).forEach {row->
                             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
                                 row.forEach {t->
                                     FilterChip(selected=readerTheme==t.name,onClick={
                                         readerTheme=t.name
                                         prefs.edit().putString("readerTheme",t.name).apply()
-                                    },label={Text(t.name)})
+                                    },label={Text(ui(t.name))})
                                     Spacer(Modifier.width(4.dp))
                                 }
                             }
@@ -124,7 +124,7 @@ fun LibrarySettingsSheet(
                     }
                 }
                 if(section=="Library") {
-                    Text("Sıralama",fontWeight=FontWeight.SemiBold)
+                    Text(ui("Sıralama"),fontWeight=FontWeight.SemiBold)
                     listOf("Son oxunanlar","Əlavə edilmə tarixi","A–Z","Z–A","Progress")
                         .forEach {value->
                             Row(Modifier.fillMaxWidth().clickable {
@@ -135,12 +135,12 @@ fun LibrarySettingsSheet(
                                     prefs.edit().putString("librarySort",value).apply()
                                     onSort(value)
                                 })
-                                Text(value)
+                                Text(ui(value))
                             }
                         }
-                    Text("Bitirilmiş kitablar aşağıda saxlanılır.",fontSize=12.sp)
+                    Text(ui("Bitirilmiş kitablar aşağıda saxlanılır."),fontSize=12.sp)
                     HorizontalDivider()
-                    Text("Gizlədilmiş kitablar: ${hidden.size}",fontWeight=FontWeight.SemiBold)
+                    Text(ui("Gizlədilmiş kitablar: ${hidden.size}"),fontWeight=FontWeight.SemiBold)
                     hidden.forEach {b->
                         Row(verticalAlignment=Alignment.CenterVertically) {
                             Text(b.optString("title"),modifier=Modifier.weight(1f))
@@ -148,24 +148,24 @@ fun LibrarySettingsSheet(
                                 onRestore(b.optString("path"))
                                 hiddenRefresh++
                             }) {
-                                Text("Geri qaytar")
+                                Text(ui("Geri qaytar"))
                             }
                         }
                     }
                 }
                 if(section=="Data & Backup") {
-                    Text("Yalnız metadata: kitab faylları daxil deyil.",fontSize=13.sp)
-                    Button(onClick=onExport,modifier=Modifier.fillMaxWidth()) {Text("Export JSON")}
-                    OutlinedButton(onClick=onImport,modifier=Modifier.fillMaxWidth()) {Text("Import JSON")}
+                    Text(ui("Yalnız metadata: kitab faylları daxil deyil."),fontSize=13.sp)
+                    Button(onClick=onExport,modifier=Modifier.fillMaxWidth()) {Text(ui("Export JSON"))}
+                    OutlinedButton(onClick=onImport,modifier=Modifier.fillMaxWidth()) {Text(ui("Import JSON"))}
                 }
                 if(section=="Reading") {
-                    Text("Şrift, sətirarası məsafə, ekran istiqaməti və zoom kitabın "+
-                        "daxilindəki Aa menyusundan dəyişdirilir.")
-                    Text("Qlobal Reader Theme seçimi Appearance bölməsindədir.")
+                    Text(ui("Şrift, sətirarası məsafə, ekran istiqaməti və zoom kitabın "+
+                        "daxilindəki Aa menyusundan dəyişdirilir."))
+                    Text(ui("Qlobal Reader Theme seçimi Appearance bölməsindədir."))
                 }
                 if(section=="About") {
-                    Text("Leaf Reader",fontSize=22.sp,fontWeight=FontWeight.Bold)
-                    Text("3.3.3 Preview · Offline EPUB / PDF / CBZ")
+                    Text(ui("Leaf Reader"),fontSize=22.sp,fontWeight=FontWeight.Bold)
+                    Text(ui("3.3.3 Preview · Offline EPUB / PDF / CBZ"))
                 }
             }
         }
@@ -182,39 +182,39 @@ fun AdvancedFiltersSheet(
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
             .padding(horizontal=24.dp).padding(bottom=24.dp),
             verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            Text("Ətraflı filtrlər",fontSize=24.sp,fontWeight=FontWeight.Bold)
-            Text("Janr")
+            Text(ui("Ətraflı filtrlər"),fontSize=24.sp,fontWeight=FontWeight.Bold)
+            Text(ui("Janr"))
             (listOf(GenreCatalog.UNKNOWN)+genres.filter {it!=GenreCatalog.UNKNOWN})
                 .distinct().chunked(3).forEach {group->
                     Row(Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement=Arrangement.spacedBy(5.dp)) {
                         group.forEach {g->
                             FilterChip(selected=genre==g,onClick={onGenre(g)},
-                                label={Text(if(g==GenreCatalog.UNKNOWN)"Bütün janrlar" else g)})
+                                label={Text(ui(if(g==GenreCatalog.UNKNOWN)"Bütün janrlar" else g))})
                         }
                     }
                 }
-            Text("Format")
+            Text(ui("Format"))
             Row(Modifier.horizontalScroll(rememberScrollState())) {
                 listOf("Hamısı","EPUB","PDF","CBZ").forEach {v->
-                    FilterChip(selected=format==v,onClick={onFormat(v)},label={Text(v)})
+                    FilterChip(selected=format==v,onClick={onFormat(v)},label={Text(ui(v))})
                     Spacer(Modifier.width(4.dp))
                 }
             }
-            Text("Kolleksiya")
+            Text(ui("Kolleksiya"))
             (listOf("")+collections).chunked(3).forEach {group->
                 Row(Modifier.horizontalScroll(rememberScrollState())) {
                     group.forEach {c->
                         FilterChip(selected=collection==c,onClick={onCollection(c)},
-                            label={Text(c.ifBlank {"Hamısı"})})
+                            label={Text(ui(c.ifBlank {"Hamısı"}))})
                         Spacer(Modifier.width(4.dp))
                     }
                 }
             }
             OutlinedButton(onClick={
                 onGenre(GenreCatalog.UNKNOWN);onFormat("Hamısı");onCollection("")
-            },modifier=Modifier.fillMaxWidth()) {Text("Filtrləri sıfırla")}
-            Button(onClick=onClose,modifier=Modifier.fillMaxWidth()) {Text("Kitabları göstər")}
+            },modifier=Modifier.fillMaxWidth()) {Text(ui("Filtrləri sıfırla"))}
+            Button(onClick=onClose,modifier=Modifier.fillMaxWidth()) {Text(ui("Kitabları göstər"))}
         }
     }
 }
