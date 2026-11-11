@@ -83,24 +83,32 @@ class BookStore(private val context: Context) {
                 java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
         }catch(_:Exception){0L}
     }
+    /** Sorting applies to the entire filtered list; status is a filter, not a sort group. */
     fun sortBooks(values:List<ReaderBook>,kind:String="Son oxunanlar"):List<ReaderBook> {
         val data=records().associateBy {it.optString("path")}
-        fun group(b:ReaderBook):Int=when(b.status) {
-            "Oxunur"->0
-            "Oxunmayıb"->1
-            "Yarımçıq saxlanılıb"->2
-            "Bitirilib"->3
-            else->2
+        fun added(b:ReaderBook):Long {
+            val item=data[b.path]
+            val stored=item?.optLong("addedAt",0L) ?:0L
+            if(stored>0L)return stored
+            // Legacy imports used book_<timestamp>.ext, which is safe to parse
+            // for sorting without altering existing library records.
+            return b.path.substringAfter("book_","").substringBefore('.').toLongOrNull() ?:0L
         }
+        val byTitle=compareBy<ReaderBook> {it.title.lowercase(java.util.Locale.ROOT)}
+            .thenBy {it.path}
         return when(kind) {
-            "A–Z"->values.sortedWith(compareBy<ReaderBook> {group(it)}.thenBy {it.title.lowercase()})
-            "Z–A"->values.sortedWith(compareBy<ReaderBook> {group(it)}.thenByDescending {it.title.lowercase()})
-            "Progress"->values.sortedWith(compareBy<ReaderBook> {group(it)}.thenByDescending {it.progress})
-            "Əlavə edilmə tarixi"->values.sortedWith(compareBy<ReaderBook> {group(it)}
-                .thenByDescending {data[it.path]?.optLong("addedAt",0L) ?:0L})
-            else->values.sortedWith(compareBy<ReaderBook> {group(it)}
-                .thenByDescending {lastReadSortTime(data[it.path] ?:JSONObject())}
-                .thenByDescending {data[it.path]?.optLong("addedAt",0L) ?:0L})
+            "A–Z" -> values.sortedWith(byTitle)
+            "Z–A" -> values.sortedWith(
+                compareByDescending<ReaderBook> {it.title.lowercase(java.util.Locale.ROOT)}
+                    .thenBy {it.path})
+            "Progress" -> values.sortedWith(compareByDescending<ReaderBook> {it.progress}
+                .then(byTitle))
+            "Əlavə edilmə tarixi" -> values.sortedWith(
+                compareByDescending<ReaderBook> {added(it)}.then(byTitle))
+            else -> values.sortedWith(
+                compareByDescending<ReaderBook> {
+                    lastReadSortTime(data[it.path] ?:JSONObject())
+                }.thenByDescending {added(it)}.then(byTitle))
         }
     }
 
