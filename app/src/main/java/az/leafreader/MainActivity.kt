@@ -68,6 +68,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -120,6 +123,8 @@ class MainActivity:ComponentActivity() {
 @Composable
 private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:Uri?=null) {
     val context=LocalContext.current
+    val backupScope=rememberCoroutineScope()
+    var backupBusy by remember {mutableStateOf(false)}
     var books by remember {mutableStateOf(store.books())}
     var selectedPath by rememberSaveable {mutableStateOf<String?>(null)}
     val selected=books.firstOrNull {it.path==selectedPath}
@@ -267,6 +272,42 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                     store.setting().getString("language","az") ?: "az"),Toast.LENGTH_LONG).show()
         }catch(e:Exception){Toast.makeText(context,UiLanguage.translate(e.message ?: "Import xətası",
                     store.setting().getString("language","az") ?: "az"),Toast.LENGTH_LONG).show()}
+    }
+    val fullZipExport=rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")) {uri->
+        if(uri!=null && !backupBusy)backupScope.launch {
+            backupBusy=true
+            try {
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri)?.use { output ->
+                        FullLibraryBackup(context,store).exportZip(output)
+                    } ?:error("Yazma icazəsi yoxdur")
+                }
+                Toast.makeText(context,UiLanguage.translate("Tam backup saxlanıldı",language),
+                    Toast.LENGTH_LONG).show()
+            }catch(e:Exception) {
+                Toast.makeText(context,e.message ?: "Backup xətası",Toast.LENGTH_LONG).show()
+            }finally {backupBusy=false}
+        }
+    }
+    val fullZipImport=rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()) {uri->
+        if(uri!=null && !backupBusy)backupScope.launch {
+            backupBusy=true
+            try {
+                val result=withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        FullLibraryBackup(context,store).restoreZip(input)
+                    } ?:error("Backup faylı oxunmadı")
+                }
+                refreshLibrary()
+                Toast.makeText(context,
+                    UiLanguage.translate("Tam bərpa tamamlandı",language)+": ${result.restoredBooks}",
+                    Toast.LENGTH_LONG).show()
+            }catch(e:Exception) {
+                Toast.makeText(context,e.message ?: "Bərpa xətası",Toast.LENGTH_LONG).show()
+            }finally {backupBusy=false}
+        }
     }
     val journalMarkdownExport=rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/markdown")) {uri->
@@ -674,6 +715,8 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                     store.setting().edit().putString("language",next).apply()
                 },
                 onExport={jsonExport.launch("leaf-reader-metadata.json")},
+                onFullExport={if(!backupBusy)fullZipExport.launch("leaf-reader-full-backup.zip")},
+                onFullImport={if(!backupBusy)fullZipImport.launch(arrayOf("application/zip","application/octet-stream"))},
                 onImport={jsonImport.launch(arrayOf("application/json","text/plain"))},
                 onRestore={path->
                     store.hideBook(path,false)
