@@ -229,10 +229,10 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 color=MaterialTheme.colorScheme.onBackground,
                                 modifier=Modifier.weight(1f))
                             IconButton(onClick={showSearch=!showSearch}) {
-                                Icon(Icons.Default.Search,"Kitab axtar")
+                                Icon(Icons.Default.Search,ui("Kitab axtar"))
                             }
                             IconButton(onClick={showSettingsHome=true}) {
-                                Icon(Icons.Default.Settings,"Settings")
+                                Icon(Icons.Default.Settings,ui("Settings"))
                             }
                         }
                         Row(Modifier.fillMaxWidth(),
@@ -265,7 +265,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                     FloatingActionButton(onClick={
                         filePicker.launch(arrayOf("*/*"))
                     }) {
-                        Icon(Icons.Default.LibraryAdd,"Kitab əlavə et")
+                        Icon(Icons.Default.LibraryAdd,ui("Kitab əlavə et"))
                     }
                 }
             ){ inner->
@@ -278,7 +278,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                             leadingIcon={Icon(Icons.Default.Search,null)},
                             trailingIcon={
                                 IconButton(onClick={search="";showSearch=false}) {
-                                    Icon(Icons.Default.Close,"Axtarışı bağla")
+                                    Icon(Icons.Default.Close,ui("Axtarışı bağla"))
                                 }
                             }
                         )
@@ -564,7 +564,7 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
                 Text(ui(book.progress.toString()+"% oxunub"),fontSize=12.sp,
                     color=MaterialTheme.colorScheme.primary)
             }
-            IconButton(onClick=onMore) {Icon(Icons.Default.MoreVert,"Kitab ayarları")}
+            IconButton(onClick=onMore) {Icon(Icons.Default.MoreVert,ui("Kitab ayarları"))}
         }
     }
 }
@@ -913,12 +913,12 @@ private fun ReaderScreen(
                     FilledTonalIconButton(onClick={turn(-1)},modifier=Modifier.size(52.dp),
                         colors=IconButtonDefaults.filledTonalIconButtonColors(
                             containerColor=paper.copy(alpha=0.9f))) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack,"Əvvəlki səhifə",tint=textColor)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack,ui("Əvvəlki səhifə"),tint=textColor)
                     }
                     FilledTonalIconButton(onClick={turn(1)},modifier=Modifier.size(52.dp),
                         colors=IconButtonDefaults.filledTonalIconButtonColors(
                             containerColor=paper.copy(alpha=0.9f))) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward,"Növbəti səhifə",tint=textColor)
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward,ui("Növbəti səhifə"),tint=textColor)
                     }
                 }
             }
@@ -927,7 +927,7 @@ private fun ReaderScreen(
                     Row(Modifier.fillMaxWidth().height(62.dp).padding(horizontal=10.dp),
                         verticalAlignment=Alignment.CenterVertically) {
                         IconButton(onClick=onExit,modifier=Modifier.size(48.dp)) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack,"Kitabxanaya qayıt",tint=textColor)
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack,ui("Kitabxanaya qayıt"),tint=textColor)
                         }
                         if(!landscape) {
                             Text(book.title,modifier=Modifier.weight(1f),maxLines=1,
@@ -936,15 +936,15 @@ private fun ReaderScreen(
                         } else Spacer(Modifier.weight(1f))
                         if(isTextBook) IconButton(onClick={showChapterSearch=true},
                             modifier=Modifier.size(40.dp)) {
-                            Icon(Icons.Default.Search,"Kitabda axtar",tint=textColor)
+                            Icon(Icons.Default.Search,ui("Kitabda axtar"),tint=textColor)
                         }
                         IconButton(onClick={draftQuote="";showReadingNotes=true},
                             modifier=Modifier.size(40.dp)) {
-                            Icon(Icons.Default.EditNote,"Qeydlər və sitatlar",tint=textColor)
+                            Icon(Icons.Default.EditNote,ui("Qeydlər və sitatlar"),tint=textColor)
                         }
                         if(isTextBook) IconButton(onClick={showChapters=true},
                             modifier=Modifier.size(40.dp)) {
-                            Icon(Icons.Default.List,"Fəsillər",tint=textColor)
+                            Icon(Icons.Default.List,ui("Fəsillər"),tint=textColor)
                         }
                         IconButton(onClick={
                             val added=store.toggleBookmark(book.path,chapter,
@@ -958,12 +958,11 @@ private fun ReaderScreen(
                                 store.hasBookmark(book.path,chapter,
                                     if(isTextBook)fraction else 0.0)
                             }
-                            Icon(if(isMarked)Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                                "Əlfəcin əlavə et və ya sil",tint=textColor)
+                            Icon(if(isMarked)Icons.Default.Bookmark else Icons.Default.BookmarkBorder,ui("Əlfəcin əlavə et və ya sil"),tint=textColor)
                         }
                         IconButton(onClick={showReaderBookmarks=true},
                             modifier=Modifier.size(44.dp)) {
-                            Icon(Icons.Default.Bookmarks,"Əlfəcinlərim",tint=textColor)
+                            Icon(Icons.Default.Bookmarks,ui("Əlfəcinlərim"),tint=textColor)
                         }
                         FilledTonalIconButton(onClick={showSettings=true},modifier=Modifier.size(48.dp)) {
                             Text(ui("Aa"),fontSize=18.sp,fontWeight=FontWeight.Bold)
@@ -981,11 +980,11 @@ private fun ReaderScreen(
             if(chrome) {
                 Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(paper.copy(alpha=0.97f))
                     .padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-                    IconButton(onClick={turn(-1)}) {Icon(Icons.AutoMirrored.Filled.ArrowBack,"Əvvəlki",tint=textColor)}
+                    IconButton(onClick={turn(-1)}) {Icon(Icons.AutoMirrored.Filled.ArrowBack,ui("Əvvəlki"),tint=textColor)}
                     Text(ui(if(isTextBook)"Fəsil "+(chapter+1)+"/"+chapterFiles.size
                         else "Səhifə "+(chapter+1)+"/"+pageCount),
                         modifier=Modifier.weight(1f),color=textColor,fontSize=13.sp)
-                    IconButton(onClick={turn(1)}) {Icon(Icons.AutoMirrored.Filled.ArrowForward,"Növbəti",tint=textColor)}
+                    IconButton(onClick={turn(1)}) {Icon(Icons.AutoMirrored.Filled.ArrowForward,ui("Növbəti"),tint=textColor)}
                 }
             }
         }
