@@ -74,6 +74,8 @@ class ZoomPageView(
         invalidate()
     }
 
+    fun fitWidthEnabled():Boolean=fitWidth
+
     fun setFitWidth(enabled: Boolean) {
         fitWidth = enabled
         resetMatrix()
