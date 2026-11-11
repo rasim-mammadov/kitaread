@@ -160,7 +160,7 @@ object UiLanguage {
         "Oxuma" to Pair("Чтение","Reading"),
         "Kitabxana" to Pair("Библиотека","Library"),
         "Məlumatlar" to Pair("Данные","Data"),
-        "Haqqında" to Pair("О приложении","About")
+        "Haqqında" to Pair("О приложении","About"),
         "Leaf Reader-dən çıxmaq istəyirsən?" to Pair("Выйти из Leaf Reader?","Exit Leaf Reader?"),
         "Kitabxanan və oxuma mövqeyin saxlanılacaq." to Pair("Библиотека и позиция чтения будут сохранены.","Your library and reading position will be saved."),
         "Qlobal Reader Theme seçimi Appearance bölməsindədir." to Pair("Общая тема чтения находится в разделе «Оформление».","Global reader theme is available in Appearance."),
