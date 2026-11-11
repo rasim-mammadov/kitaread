@@ -141,6 +141,7 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                         LibraryMeter("EPUB",overview.epubBooks,overview.totalBooks)
                         LibraryMeter("PDF",overview.pdfBooks,overview.totalBooks)
                         LibraryMeter("CBZ · Komiks",overview.comicBooks,overview.totalBooks)
+                        LibraryMeter("Markdown",overview.markdownBooks,overview.totalBooks)
                     }
                 }
             }
