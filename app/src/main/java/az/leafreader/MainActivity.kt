@@ -630,6 +630,8 @@ private fun ReaderScreen(
     var rotationMode by remember {
         mutableStateOf(optionString("screenOrientation",prefs.getString("screenOrientation","Auto") ?: "Auto"))
     }
+    var focusMode by rememberSaveable(book.path) {mutableStateOf(false)}
+    var brightness by remember {mutableFloatStateOf(prefs.getFloat("readerBrightness",-1f))}
     val activity=context as? ComponentActivity
     DisposableEffect(activity,focusMode) {
         val window=activity?.window
@@ -682,8 +684,6 @@ private fun ReaderScreen(
     var arrows by remember {mutableStateOf(optionBoolean("sideButtons",prefs.getBoolean("sideButtons",false)))}
     var fitWidth by remember {mutableStateOf(optionBoolean("fitWidth",prefs.getBoolean("fitWidth",false)))}
     var chrome by remember {mutableStateOf(false)}
-    var focusMode by rememberSaveable(book.path) {mutableStateOf(false)}
-    var brightness by remember {mutableFloatStateOf(prefs.getFloat("readerBrightness",-1f))}
     var smoothTurns by remember {
         mutableStateOf(optionBoolean("smoothPageTurns",
             prefs.getBoolean("smoothPageTurns",true)))
