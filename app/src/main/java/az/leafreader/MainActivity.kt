@@ -367,7 +367,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         OutlinedTextField(
                             search,{search=it},modifier=Modifier.fillMaxWidth(),
                             singleLine=true,shape=RoundedCornerShape(18.dp),
-                            placeholder={Text(ui("Kitab və müəllif axtar..."))},
+                            placeholder={Text(ui("Kitab, müəllif, seriya, janr, kolleksiya axtar..."))},
                             leadingIcon={Icon(Icons.Default.Search,null)},
                             trailingIcon={
                                 IconButton(onClick={search="";showSearch=false}) {
@@ -426,7 +426,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 (0 until collections.length()).any {collections.optString(it)==collectionFilter})
                     }
                     val ordered=store.sortBooks(visible,sortMode)
-                    val recent=if(filter=="Hamısı" && search.isBlank())
+                    val recent=if(!selecting && groupMode=="none" && filter=="Hamısı" && search.isBlank())
                         ordered.firstOrNull {book->
                             book.status=="Oxunur" &&
                             (recordsByPath[book.path]?.optLong("lastReadTimestamp",0L) ?:0L)>0L
@@ -456,7 +456,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                     val grouped=if(groupMode=="none") listOf("" to ordered)
                         else ordered.groupBy { book->
                             SmartLibrary.groupName(book,recordsByPath[book.path],groupMode)
-                        }.toSortedMap(compareBy(String.CASE_INSENSITIVE_ORDER) {it})
+                        }.toSortedMap(String.CASE_INSENSITIVE_ORDER)
                             .toList()
                     if(selecting) {
                         Surface(color=MaterialTheme.colorScheme.surface,
