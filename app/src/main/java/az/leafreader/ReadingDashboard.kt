@@ -156,8 +156,8 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                             mutableStateOf(savedTitle.orEmpty())
                         }
                         val unlocked=earned.map {GenreCatalog.title(it.first)}.distinct()
-                        if(chosen !in unlocked)chosen=unlocked.firstOrNull().orEmpty()
-                        Text(if(chosen.isNotBlank())"🏆 $"+"chosen" else "📚 Kitab Kəşfiyyatçısı",
+                        val displayedTitle=if(chosen in unlocked)chosen else unlocked.firstOrNull().orEmpty()
+                        Text(if(displayedTitle.isNotBlank())"🏆 ${displayedTitle}" else "📚 Kitab Kəşfiyyatçısı",
                             fontSize=18.sp,fontWeight=FontWeight.SemiBold)
                         Text("${overview.finishedBooks} kitab bitirilib · "+
                             "${overview.activeDays} aktiv oxu günü",
@@ -171,13 +171,13 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                                 val title=GenreCatalog.title(genre)
                                 Row(Modifier.fillMaxWidth(),
                                     verticalAlignment=Alignment.CenterVertically) {
-                                    Text("$"+"title · "+"$"+"genre · "+"$"+"count kitab",
+                                    Text("${title} · ${genre} · ${count} kitab",
                                         modifier=Modifier.weight(1f),fontSize=13.sp)
                                     TextButton(onClick={
                                         chosen=title
                                         store.setting().edit().putString("readerTitle",title).apply()
                                     }) {
-                                        Text(if(chosen==title)"Seçilib" else "Seç",
+                                        Text(if(displayedTitle==title)"Seçilib" else "Seç",
                                             fontSize=12.sp)
                                     }
                                 }
