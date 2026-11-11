@@ -6,6 +6,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color as AndroidColor
 import android.os.Bundle
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -37,6 +39,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -102,7 +106,8 @@ class MainActivity:ComponentActivity() {
 private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:Uri?=null) {
     val context=LocalContext.current
     var books by remember {mutableStateOf(store.books())}
-    var selected by remember {mutableStateOf<ReaderBook?>(null)}
+    var selectedPath by rememberSaveable {mutableStateOf<String?>(null)}
+    val selected=books.firstOrNull {it.path==selectedPath}
     var search by remember {mutableStateOf("")}
     var filter by remember {mutableStateOf("Hamısı")}
     var menuBook by remember {mutableStateOf<ReaderBook?>(null)}
@@ -128,7 +133,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         if(incomingBook!=null)try {
             val imported=withContext(Dispatchers.IO){store.import(incomingBook)}
             refreshLibrary()
-            selected=store.books().firstOrNull {it.path==imported}
+            selectedPath=imported
         }catch(e:Exception) {
             Toast.makeText(context,e.message ?: "Kitab açıla bilmədi",Toast.LENGTH_LONG).show()
         }
@@ -276,7 +281,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         items(visible,key={it.path}) { book->
                             LibraryCard(book,store,onOpen={
                                     openingMark=null
-                                    selected=book
+                                    selectedPath=book.path
                                 },onMore={detailsBook=book})
                         }
                     }
@@ -285,7 +290,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         } else {
             val book=selected!!
             ReaderScreen(book,store,tracker,openingMark,onExit={
-                selected=null
+                selectedPath=null
                 openingMark=null
                 refreshLibrary()
             })
@@ -303,7 +308,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                 val target=store.books().firstOrNull {it.path==path}
                 if(target!=null) {
                     openingMark=mark
-                    selected=target
+                    selectedPath=target.path
                     showGlobalBookmarks=false
                 }
             },onClose={showGlobalBookmarks=false},
@@ -386,6 +391,22 @@ private fun ReaderScreen(
     val context=LocalContext.current
     val prefs=remember {store.setting()}
     var theme by remember {mutableStateOf(prefs.getString("theme","Sepia") ?: "Sepia")}
+    var rotationMode by remember {
+        mutableStateOf(prefs.getString("screenOrientation","Auto") ?: "Auto")
+    }
+    val activity=context as? ComponentActivity
+    DisposableEffect(activity,rotationMode) {
+        activity?.requestedOrientation=when(rotationMode) {
+            "Portrait"->ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            "Landscape"->ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            else->ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+        onDispose {
+            if(activity!=null)
+                activity.requestedOrientation=ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+    val landscape=LocalConfiguration.current.orientation==Configuration.ORIENTATION_LANDSCAPE
     var font by remember {mutableFloatStateOf(prefs.getInt("fontSize",20).toFloat())}
     var line by remember {mutableFloatStateOf(prefs.getInt("lineSpacing",160).toFloat())}
     var alignment by remember {
@@ -400,11 +421,11 @@ private fun ReaderScreen(
     var showReaderBookmarks by remember {mutableStateOf(false)}
     var bookmarkRefresh by remember {mutableIntStateOf(0)}
     var readerBookmarkJump by remember {mutableIntStateOf(0)}
-    var chapter by remember(book.path,initialBookmark) {
+    var chapter by rememberSaveable(book.path) {
         mutableIntStateOf(initialBookmark?.chapter ?: book.chapter)
     }
     var liveProgress by remember(book.path) {mutableIntStateOf(book.progress)}
-    var fraction by remember(book.path,initialBookmark) {
+    var fraction by rememberSaveable(book.path) {
         mutableDoubleStateOf(initialBookmark?.fraction ?: book.fraction)
     }
     var chapterFiles by remember(book.path) {mutableStateOf<List<File>>(emptyList())}
@@ -699,8 +720,11 @@ private fun ReaderScreen(
                         IconButton(onClick=onExit,modifier=Modifier.size(48.dp)) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack,"Kitabxanaya qayıt",tint=textColor)
                         }
-                        Text(book.title,modifier=Modifier.weight(1f),maxLines=1,
-                            overflow=TextOverflow.Ellipsis,color=textColor,fontWeight=FontWeight.Medium)
+                        if(!landscape) {
+                            Text(book.title,modifier=Modifier.weight(1f),maxLines=1,
+                                overflow=TextOverflow.Ellipsis,color=textColor,
+                                fontWeight=FontWeight.Medium)
+                        } else Spacer(Modifier.weight(1f))
                         if(book.type=="epub") IconButton(onClick={showChapters=true},
                             modifier=Modifier.size(44.dp)) {
                             Icon(Icons.Default.List,"Fəsillər",tint=textColor)
@@ -754,6 +778,23 @@ private fun ReaderScreen(
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                 .padding(horizontal=24.dp).padding(bottom=24.dp)) {
                 Text("Oxuma ayarları",fontSize=24.sp,fontWeight=FontWeight.Bold)
+                Text("Ekran istiqaməti",fontWeight=FontWeight.SemiBold)
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    listOf("Auto","Portrait","Landscape").forEach {option->
+                        FilterChip(
+                            selected=rotationMode==option,
+                            onClick={
+                                rotationMode=option
+                                prefs.edit().putString("screenOrientation",option).apply()
+                            },
+                            label={Text(when(option) {
+                                "Auto"->"Avtomatik"
+                                "Portrait"->"Şaquli"
+                                else->"Üfüqi"
+                            })}
+                        )
+                    }
+                }
                 Spacer(Modifier.height(8.dp))
                 Text("Oxuma teması · 10 hazır seçim",fontWeight=FontWeight.SemiBold)
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
