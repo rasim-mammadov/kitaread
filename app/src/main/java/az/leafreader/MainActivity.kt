@@ -57,6 +57,7 @@ class MainActivity : Activity() {
         window.decorView.systemUiVisibility = if(enabled)
             (View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_STABLE)
             else 0
+        if (::root.isInitialized && Build.VERSION.SDK_INT >= 35) root.requestApplyInsets()
     }
     private fun toggleBars() {
         readerBarsVisible = !readerBarsVisible
@@ -119,8 +120,25 @@ class MainActivity : Activity() {
         prefs.edit().putString("items", arr.toString()).apply()
     }
     private fun bar(title: String, back: Boolean = false) {
-        root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(bg()) }
+        root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(bg())
+            // Android 15 enforces edge-to-edge for targetSdk 35. Keep app navigation
+            // above the system gesture/navigation area; reader stays immersive.
+            if (Build.VERSION.SDK_INT >= 35) {
+                setOnApplyWindowInsetsListener { view, insets ->
+                    val safe = insets.getInsets(WindowInsets.Type.systemBars())
+                    if (current == null) {
+                        view.setPadding(safe.left, safe.top, safe.right, safe.bottom)
+                    } else {
+                        view.setPadding(0, 0, 0, 0)
+                    }
+                    insets
+                }
+            }
+        }
         setContentView(root)
+        if (Build.VERSION.SDK_INT >= 35) root.requestApplyInsets()
         val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(18,20,18,20); setBackgroundColor(teal) }
         if(back) head.addView(action("‹") { closeReader(); shelf() })
         head.addView(TextView(this).apply {
