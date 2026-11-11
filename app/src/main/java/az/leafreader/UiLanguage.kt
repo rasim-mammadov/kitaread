@@ -161,7 +161,7 @@ object UiLanguage {
         "Kitabxana" to Pair("Библиотека","Library"),
         "Məlumatlar" to Pair("Данные","Data"),
         "Haqqında" to Pair("О приложении","About"),
-        "Leaf Reader-dən çıxmaq istəyirsən?" to Pair("Выйти из Leaf Reader?","Exit Leaf Reader?"),
+        "KitaRead-dən çıxmaq istəyirsən?" to Pair("Выйти из KitaRead?","Exit KitaRead?"),
         "Kitabxanan və oxuma mövqeyin saxlanılacaq." to Pair("Библиотека и позиция чтения будут сохранены.","Your library and reading position will be saved."),
         "Qlobal Reader Theme seçimi Appearance bölməsindədir." to Pair("Общая тема чтения находится в разделе «Оформление».","Global reader theme is available in Appearance."),
         "Şrift, sətirarası məsafə, ekran istiqaməti və zoom kitabın daxilindəki Aa menyusundan dəyişdirilir." to Pair("Размер шрифта, интервал, ориентация и масштаб настраиваются через Aa внутри книги.","Font size, spacing, orientation and zoom are adjusted from Aa inside a book."),
@@ -344,9 +344,9 @@ object UiLanguage {
         "Seriya" to Pair("Серия","Series"),
         "Ağıllı axtarış" to Pair("Умный поиск","Smart search"),
         "Kitab, müəllif, seriya, janr, kolleksiya axtar..." to Pair("Поиск книги, автора, серии, жанра, коллекции...","Search title, author, series, genre, collection..."),
-        "4.0 RC2 · Offline EPUB / PDF / CBZ / Markdown" to Pair(
-            "Версия 4.0 RC2 · Без интернета · EPUB / PDF / CBZ / Markdown",
-            "4.0 RC2 · Offline EPUB / PDF / CBZ / Markdown")
+        "4.1 Preview · Offline EPUB / PDF / CBZ / Markdown" to Pair(
+            "Версия 4.1 Preview · Без интернета · EPUB / PDF / CBZ / Markdown",
+            "4.1 Preview · Offline EPUB / PDF / CBZ / Markdown")
     )
     fun translate(text:String,language:String):String {
         if(language=="az")return when(text) {
@@ -365,8 +365,8 @@ object UiLanguage {
             "Reader Theme tətbiq temasını izləsin"->"Oxuyucu tətbiqin temasını izləsin"
             "Qlobal Reader Theme seçimi Appearance bölməsindədir."->
                 "Oxuyucunun ümumi temasını Görünüş bölməsindən seç."
-            "4.0 RC2 · Offline EPUB / PDF / CBZ / Markdown"->
-                "4.0 RC2 namizəd versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
+            "4.1 Preview · Offline EPUB / PDF / CBZ / Markdown"->
+                "4.1 Preview namizəd versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
             "3.5 Preview · Offline EPUB / PDF / CBZ / Markdown"->
                 "3.5 İlkin versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
             "3.3.3 Preview · Offline EPUB / PDF / CBZ"->
