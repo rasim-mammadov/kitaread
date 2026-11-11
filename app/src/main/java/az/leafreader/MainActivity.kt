@@ -595,6 +595,7 @@ private fun ReaderScreen(
     var showChapterSearch by remember {mutableStateOf(false)}
     var showReadingNotes by remember {mutableStateOf(false)}
     var draftQuote by remember {mutableStateOf("")}
+    var draftChapter by remember {mutableIntStateOf(-1)}
     var pendingSearch by remember {mutableStateOf("")}
     var bookmarkRefresh by remember {mutableIntStateOf(0)}
     var readerBookmarkJump by remember {mutableIntStateOf(0)}
@@ -1078,6 +1079,7 @@ private fun ReaderScreen(
             },
             onSaveQuote={index,snippet->
                 draftQuote=snippet
+                draftChapter=index
                 showChapterSearch=false
                 showReadingNotes=true
             },
@@ -1085,7 +1087,8 @@ private fun ReaderScreen(
     }
     if(showReadingNotes) {
         ReadingNotesSheet(store=store,bookPath=book.path,
-            currentChapter=chapter,initialQuote=draftQuote,
+            currentChapter=if(draftChapter>=0)draftChapter else chapter,
+            initialQuote=draftQuote,
             onJump={index->
                 if(book.type=="epub") {
                     if(index in chapterFiles.indices) {
@@ -1097,7 +1100,7 @@ private fun ReaderScreen(
                 showReadingNotes=false
                 draftQuote=""
             },
-            onClose={showReadingNotes=false;draftQuote=""})
+            onClose={showReadingNotes=false;draftQuote="";draftChapter=-1})
     }
     if(showReaderBookmarks) {
         BookmarksSheet(store,bookPath=book.path,
