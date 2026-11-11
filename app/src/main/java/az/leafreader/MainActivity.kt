@@ -1038,6 +1038,8 @@ private fun ReaderScreen(
             }
             else pageCount=withContext(Dispatchers.IO){ReaderMedia.count(bookFile,book.type)}
             chapter=chapter.coerceIn(0,(if(isTextBook)chapterFiles.size else pageCount)-1)
+            if(book.type=="cbz" && comicMode==ComicModes.DOUBLE)
+                chapter=ComicModes.firstPage(chapter,comicMode)
         }catch(e:Exception){loadError=e.message ?: "Kitabı açmaq mümkün olmadı"}
     }
     fun moveTextPage(view:WebView,target:Int) {
@@ -1301,6 +1303,7 @@ private fun ReaderScreen(
                                 onNext={if(swipe)nextTurn(1)},
                                 onPrevious={if(swipe)nextTurn(-1)},
                                 rtlSwipe=(book.type=="cbz" && comicRtl),
+                                tapZones=(book.type=="cbz"),
                                 onToggleControls={controls()},
                                 onZoomChanged={zoom->prefs.edit().putFloat("zoom",zoom).apply()})
                         },
