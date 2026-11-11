@@ -42,7 +42,6 @@ fun SmartGridBook(
         } else null
     }
     Card(
-        onClick={if(selecting)onSelect else onOpen},
         modifier=Modifier.fillMaxWidth(),
         shape=RoundedCornerShape(16.dp),
         colors=CardDefaults.cardColors(containerColor=if(selected)
@@ -51,6 +50,7 @@ fun SmartGridBook(
         Column(Modifier.fillMaxWidth().padding(10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
             Box(Modifier.fillMaxWidth().height(165.dp)
                 .clip(RoundedCornerShape(10.dp))
+                .clickable(onClick=if(selecting)onSelect else onOpen)
                 .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment=Alignment.Center) {
                 if(cover!=null) {
@@ -62,6 +62,7 @@ fun SmartGridBook(
                     modifier=Modifier.align(Alignment.TopEnd))
             }
             Text(book.title,maxLines=2,overflow=TextOverflow.Ellipsis,
+                modifier=Modifier.fillMaxWidth().clickable(onClick=if(selecting)onSelect else onOpen),
                 fontSize=13.sp,fontWeight=FontWeight.SemiBold,lineHeight=17.sp)
             val author=remember(book.path) {store.find(book.path)?.optString("author").orEmpty()}
             if(author.isNotBlank())Text(author,maxLines=1,overflow=TextOverflow.Ellipsis,
