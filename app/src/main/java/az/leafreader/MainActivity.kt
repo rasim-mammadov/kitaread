@@ -125,6 +125,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
     var showSettingsHome by remember {mutableStateOf(false)}
     var showAdvancedFilters by remember {mutableStateOf(false)}
     var showSearch by remember {mutableStateOf(false)}
+    var showSortMenu by remember {mutableStateOf(false)}
     var showExitConfirmation by remember {mutableStateOf(false)}
     var deleteBook by remember {mutableStateOf<ReaderBook?>(null)}
     var deleteMode by remember {mutableStateOf("hide")}
@@ -274,10 +275,23 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         Text("Kitabxanam",color=MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier=Modifier.weight(1f),fontSize=13.sp)
-                        TextButton(onClick={showSettingsHome=true}) {
-                            Icon(Icons.Default.Sort,null,Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(sortMode,fontSize=12.sp)
+                        Box {
+                            TextButton(onClick={showSortMenu=true}) {
+                                Icon(Icons.Default.Sort,null,Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(sortMode,fontSize=12.sp)
+                            }
+                            DropdownMenu(expanded=showSortMenu,
+                                onDismissRequest={showSortMenu=false}) {
+                                listOf("Son oxunanlar","Əlavə edilmə tarixi",
+                                    "A–Z","Z–A","Progress").forEach {option->
+                                    DropdownMenuItem(text={Text(option)},onClick={
+                                        sortMode=option
+                                        store.setting().edit().putString("librarySort",option).apply()
+                                        showSortMenu=false
+                                    })
+                                }
+                            }
                         }
                     }
                     val allCollections=remember(libraryVersion) {store.collections()}
