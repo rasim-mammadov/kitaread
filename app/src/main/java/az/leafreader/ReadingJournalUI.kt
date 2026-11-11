@@ -27,7 +27,7 @@ fun ReadingJournalScreen(
     val books=remember(revision){store.records()}
     val entries=remember(books){ReadingJournal.entries(books)}
     val annotations=remember(books){ReadingJournal.annotations(books)}
-    var selectedBook by remember {mutableStateOf(books.firstOrNull()?.optString("path").orEmpty())}
+    var selectedBook by remember {mutableStateOf("")}
     var draft by remember {mutableStateOf("")}
     var reviewDraft by remember(selectedBook,revision) {
         mutableStateOf(store.find(selectedBook)?.optString("personalReview").orEmpty())
@@ -64,7 +64,7 @@ fun ReadingJournalScreen(
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(query,{query=it},modifier=Modifier.fillMaxWidth(),
                 singleLine=true,label={Text(ui("Kitab və müəllif axtar..."))})
-            val titles=visible.map {it.optString("path") to it.optString("title")}
+            val titles=listOf("" to ui("Bütün kitablar")) + visible.map {it.optString("path") to it.optString("title")}
             var menu by remember {mutableStateOf(false)}
             Box {
                 OutlinedButton(onClick={menu=true},modifier=Modifier.fillMaxWidth()) {
@@ -85,7 +85,7 @@ fun ReadingJournalScreen(
                     FilterChip(selected=tab==key,onClick={tab=key},label={Text(ui(label))})
                 }
             }
-            if(tab=="journal") {
+            if(tab=="journal" && pathAllowed) {
                 OutlinedTextField(draft,{draft=it},modifier=Modifier.fillMaxWidth(),
                     label={Text(ui("Bu günün oxu qeydi"))},minLines=2,maxLines=4)
                 Button(onClick={
@@ -95,7 +95,7 @@ fun ReadingJournalScreen(
                     }
                 },enabled=pathAllowed && draft.isNotBlank(),
                     modifier=Modifier.fillMaxWidth()) {Text(ui("Gündəliyə əlavə et"))}
-            } else if(tab=="reviews") {
+            } else if(tab=="reviews" && pathAllowed) {
                 OutlinedTextField(reviewDraft,{reviewDraft=it},modifier=Modifier.fillMaxWidth(),
                     label={Text(ui("Kitab haqqında şəxsi rəy"))},minLines=3,maxLines=7)
                 Button(onClick={
@@ -108,8 +108,6 @@ fun ReadingJournalScreen(
                 }
             }
             HorizontalDivider(Modifier.padding(vertical=8.dp))
-            val selectedTitle=books.firstOrNull {it.optString("path")==selectedBook}
-                ?.optString("title").orEmpty()
             val shownEntries=entries.filter {it.bookPath==selectedBook || selectedBook.isBlank()}
             val shownNotes=annotations.filter {it.bookPath==selectedBook || selectedBook.isBlank()}
             LazyColumn(contentPadding=PaddingValues(bottom=32.dp),
