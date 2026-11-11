@@ -1112,6 +1112,78 @@ private fun ReaderScreen(
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                 .padding(horizontal=24.dp).padding(bottom=24.dp)) {
                 Text(ui("Oxuma ayarları"),fontSize=24.sp,fontWeight=FontWeight.Bold)
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                    Text("📚  "+ui("Bu kitab üçün ayrıca parametrlər"),
+                        modifier=Modifier.weight(1f),fontWeight=FontWeight.SemiBold)
+                    Switch(checked=perBookSettings,onCheckedChange={enabled->
+                        if(enabled) {
+                            val snapshot=JSONObject()
+                                .put("enabled",true)
+                                .put("readerTheme",theme)
+                                .put("fontSize",font.toInt())
+                                .put("lineSpacing",line.toInt())
+                                .put("textAlignment",alignment)
+                                .put("epubMode",mode)
+                                .put("screenOrientation",rotationMode)
+                                .put("swipeTurn",swipe)
+                                .put("sideButtons",arrows)
+                                .put("smoothPageTurns",smoothTurns)
+                            store.change(book.path) {it.put("readerOptions",snapshot)}
+                        } else {
+                            store.change(book.path) {entry->
+                                entry.optJSONObject("readerOptions")?.put("enabled",false)
+                            }
+                            font=prefs.getInt("fontSize",20).toFloat()
+                            line=prefs.getInt("lineSpacing",160).toFloat()
+                            alignment=prefs.getString("textAlignment","left") ?: "left"
+                            mode=prefs.getString("epubMode","scroll") ?: "scroll"
+                            rotationMode=prefs.getString("screenOrientation","Auto") ?: "Auto"
+                            swipe=prefs.getBoolean("swipeTurn",true)
+                            arrows=prefs.getBoolean("sideButtons",false)
+                            smoothTurns=prefs.getBoolean("smoothPageTurns",true)
+                            readerFollowsApp=prefs.getBoolean("readerFollowsApp",true)
+                            theme=if(readerFollowsApp)
+                                prefs.getString("theme","Sepia") ?: "Sepia"
+                            else prefs.getString("readerTheme","Sepia") ?: "Sepia"
+                            onThemeChange(theme)
+                        }
+                        perBookSettings=enabled
+                    })
+                }
+                HorizontalDivider(Modifier.padding(vertical=8.dp))
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                    Text("🎯  "+ui("Focus rejimi"),modifier=Modifier.weight(1f))
+                    Switch(focusMode,{focusMode=it;chrome=if(it)false else chrome})
+                }
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                    Text("⏱  "+ui("Oxu taymeri"),modifier=Modifier.weight(1f))
+                    Text(ReadingClock.display(elapsedSeconds),fontWeight=FontWeight.Bold)
+                    TextButton(onClick={
+                        readingClock.reset(SystemClock.elapsedRealtime())
+                        elapsedSeconds=0L
+                    }) {Text(ui("Sıfırla"))}
+                }
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                    Text("☀️  "+ui("Parlaqlıq"),modifier=Modifier.weight(1f))
+                    Switch(checked=brightness>=0f,onCheckedChange={on->
+                        brightness=if(on)0.65f else -1f
+                        prefs.edit().putFloat("readerBrightness",brightness).apply()
+                    })
+                }
+                if(brightness>=0f) {
+                    Slider(value=brightness.coerceIn(0.05f,1f),onValueChange={next->
+                        brightness=next.coerceIn(0.05f,1f)
+                        prefs.edit().putFloat("readerBrightness",brightness).apply()
+                    },valueRange=0.05f..1f)
+                }
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                    Text("✨  "+ui("Axıcı səhifə keçidi"),modifier=Modifier.weight(1f))
+                    Switch(smoothTurns,{
+                        smoothTurns=it
+                        saveOption("smoothPageTurns",it)
+                    })
+                }
+                HorizontalDivider(Modifier.padding(vertical=8.dp))
                 Text("📱  "+ui("Ekran istiqaməti"),fontWeight=FontWeight.SemiBold)
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     listOf("Auto","Portrait","Landscape").forEach {option->
@@ -1119,7 +1191,7 @@ private fun ReaderScreen(
                             selected=rotationMode==option,
                             onClick={
                                 rotationMode=option
-                                prefs.edit().putString("screenOrientation",option).apply()
+                                saveOption("screenOrientation",option)
                             },
                             label={Text(ui(when(option) {
                                 "Auto"->"Avtomatik"
@@ -1130,7 +1202,7 @@ private fun ReaderScreen(
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                if(!perBookSettings) Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     Text("🎨  "+ui("Qlobal temanı izlə"),modifier=Modifier.weight(1f),
                         fontWeight=FontWeight.SemiBold)
                     Switch(checked=readerFollowsApp,onCheckedChange={follow->
@@ -1148,18 +1220,21 @@ private fun ReaderScreen(
                         FilterChip(theme==t.name,{
                             theme=t.name
                             onThemeChange(t.name)
-                            prefs.edit().putString("readerTheme",t.name)
-                                .putBoolean("readerFollowsApp",false).apply()
-                            readerFollowsApp=false
+                            if(perBookSettings)saveOption("readerTheme",t.name)
+                            else {
+                                prefs.edit().putString("readerTheme",t.name)
+                                    .putBoolean("readerFollowsApp",false).apply()
+                                readerFollowsApp=false
+                            }
                         },label={Text(ui(t.name))})
                     }
                 }
                 Spacer(Modifier.height(16.dp))
                 if(isTextBook) {
                     Text("🔠  "+ui("Şrift ölçüsü  "+font.toInt()+" px"),fontWeight=FontWeight.SemiBold)
-                    Slider(font,{font=it; prefs.edit().putInt("fontSize",it.toInt()).apply()},valueRange=12f..34f)
+                    Slider(font,{font=it;saveOption("fontSize",it.toInt())},valueRange=12f..34f)
                     Text("↕️  "+ui("Sətirarası məsafə  "+line.toInt()+"%"),fontWeight=FontWeight.SemiBold)
-                    Slider(line,{line=it; prefs.edit().putInt("lineSpacing",it.toInt()).apply()},valueRange=110f..210f)
+                    Slider(line,{line=it;saveOption("lineSpacing",it.toInt())},valueRange=110f..210f)
                     Spacer(Modifier.height(12.dp))
                     Text("↔️  "+ui("Mətnin düzülüşü"),fontWeight=FontWeight.SemiBold)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -1170,7 +1245,7 @@ private fun ReaderScreen(
                                 selected=alignment==value,
                                 onClick={
                                     alignment=value
-                                    prefs.edit().putString("textAlignment",value).apply()
+                                    saveOption("textAlignment",value)
                                 },
                                 label={Text(ui(label))}
                             )
@@ -1179,7 +1254,7 @@ private fun ReaderScreen(
                     Spacer(Modifier.height(12.dp))
                     Text("📖  "+ui("Oxuma rejimi"),fontWeight=FontWeight.SemiBold)
                     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                        FilterChip(mode=="pages",{mode="pages";prefs.edit().putString("epubMode",mode).apply()},
+                        FilterChip(mode=="pages",{mode="pages";saveOption("epubMode",mode)},
                             label={Text(ui("Səhifələmə"))})
                         FilterChip(mode=="scroll",{mode="scroll";prefs.edit().putString("epubMode",mode).apply()},
                             label={Text(ui("Continuous scroll"))})
@@ -1188,17 +1263,17 @@ private fun ReaderScreen(
                 HorizontalDivider(Modifier.padding(vertical=12.dp))
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     Text("👆  "+ui("Swipe ilə səhifə çevirmə"),modifier=Modifier.weight(1f))
-                    Switch(swipe,{swipe=it;prefs.edit().putBoolean("swipeTurn",it).apply()})
+                    Switch(swipe,{swipe=it;saveOption("swipeTurn",it)})
                 }
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     Text("↔️  "+ui("Sağ-sol düymələri göstər"),modifier=Modifier.weight(1f))
-                    Switch(arrows,{arrows=it;prefs.edit().putBoolean("sideButtons",it).apply()})
+                    Switch(arrows,{arrows=it;saveOption("sideButtons",it)})
                 }
                 if(!isTextBook) {
                     var fit by remember {mutableStateOf(prefs.getBoolean("fitWidth",false))}
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         Text("📐  "+ui("Fit to Width"),modifier=Modifier.weight(1f))
-                        Switch(fit,{fit=it;prefs.edit().putBoolean("fitWidth",it).apply()})
+                        Switch(fit,{fit=it;saveOption("fitWidth",it)})
                     }
                 }
                 Button(onClick={showSettings=false},modifier=Modifier.fillMaxWidth().height(52.dp)) {
