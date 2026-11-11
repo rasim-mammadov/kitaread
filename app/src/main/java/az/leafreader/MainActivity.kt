@@ -653,6 +653,7 @@ class MainActivity : Activity() {
         content.addView(fit)
         val dialog=AlertDialog.Builder(this).setTitle("Oxuyucu ayarları").setView(content)
             .setPositiveButton("Tətbiq et") {_,_->
+                val wasPaged=pagedEpub()
                 settings.edit()
                     .putString("theme",themeChoices[picker.selectedItemPosition])
                     .putInt("fontSize",fontValue)
@@ -663,7 +664,7 @@ class MainActivity : Activity() {
                     .putBoolean("fitWidth",fit.isChecked).apply()
                 if(book.optString("type")=="epub") {
                     web?.let { view ->
-                        val fraction=if(pagedEpub()) {
+                        val fraction=if(wasPaged) {
                             if(epubPageCount<=1)0.0 else epubPageIndex.toDouble()/(epubPageCount-1)
                         } else {
                             val max=(view.contentHeight*view.scale-view.height).toInt().coerceAtLeast(0)
