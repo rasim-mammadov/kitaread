@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,10 +29,14 @@ import java.io.File
 fun SmartGridBook(
     book:ReaderBook,
     store:BookStore,
+    textSize:Int,
+    density:Int,
+    pinned:Boolean,
     selected:Boolean,
     selecting:Boolean,
     onOpen:()->Unit,
     onMore:()->Unit,
+    onPin:()->Unit,
     onSelect:()->Unit
 ) {
     val context=LocalContext.current
@@ -47,7 +52,7 @@ fun SmartGridBook(
         colors=CardDefaults.cardColors(containerColor=if(selected)
             MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)
     ) {
-        Column(Modifier.fillMaxWidth().padding(10.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.fillMaxWidth().padding((6+density*2).dp),verticalArrangement=Arrangement.spacedBy((3+density*2).dp)) {
             Box(Modifier.fillMaxWidth().height(165.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .clickable(onClick=if(selecting)onSelect else onOpen)
@@ -63,7 +68,7 @@ fun SmartGridBook(
             }
             Text(book.title,maxLines=2,overflow=TextOverflow.Ellipsis,
                 modifier=Modifier.fillMaxWidth().clickable(onClick=if(selecting)onSelect else onOpen),
-                fontSize=13.sp,fontWeight=FontWeight.SemiBold,lineHeight=17.sp)
+                fontSize=textSize.sp,fontWeight=FontWeight.SemiBold,lineHeight=(textSize+4).sp)
             val author=remember(book.path) {store.find(book.path)?.optString("author").orEmpty()}
             if(author.isNotBlank())Text(author,maxLines=1,overflow=TextOverflow.Ellipsis,
                 fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
@@ -74,6 +79,13 @@ fun SmartGridBook(
                 Text("${book.progress}%",fontSize=11.sp,
                     color=MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier=Modifier.weight(1f))
+                if(!selecting) IconButton(onClick=onPin,modifier=Modifier.size(32.dp)) {
+                    Icon(Icons.Default.PushPin,
+                        ui(if(pinned)"Sabitləməni ləğv et" else "Kitabı sabitlə"),
+                        modifier=Modifier.size(16.dp),
+                        tint=if(pinned)MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.45f))
+                }
                 if(!selecting) TextButton(onClick=onMore,
                     contentPadding=PaddingValues(horizontal=5.dp,vertical=2.dp)) {
                     Text(ui("Ətraflı"),fontSize=11.sp)
