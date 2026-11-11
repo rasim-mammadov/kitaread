@@ -189,7 +189,7 @@ fun LibrarySettingsSheet(
                 }
                 if(section=="About") {
                     Text(ui("Leaf Reader"),fontSize=22.sp,fontWeight=FontWeight.Bold)
-                    Text(ui("3.5 Preview · Offline EPUB / PDF / CBZ / Markdown"))
+                    Text(ui("3.7 Preview · Offline EPUB / PDF / CBZ / Markdown"))
                 }
             }
         }
