@@ -222,6 +222,28 @@ object UiLanguage {
         "Əlfəcin silindi" to Pair("Закладка удалена","Bookmark removed"),
         "Yalnız EPUB, PDF, CBZ və Markdown dəstəklənir" to Pair("Поддерживаются только EPUB, PDF, CBZ и Markdown","Only EPUB, PDF, CBZ and Markdown are supported"),
         "3.5 Preview · Offline EPUB / PDF / CBZ / Markdown" to Pair("Версия 3.5 · EPUB / PDF / CBZ / Markdown офлайн","3.5 Preview · Offline EPUB / PDF / CBZ / Markdown")
+,
+        "Bitirilmiş kitab" to Pair("Прочитанные книги","Finished books"),
+        "Oxuma vaxtı" to Pair("Время чтения","Reading time"),
+        "Cari zəncir" to Pair("Текущая серия","Current streak"),
+        "Ən uzun zəncir" to Pair("Самая длинная серия","Longest streak"),
+        "Qeydə alınmış" to Pair("Зафиксировано","Recorded"),
+        "Gündə ən az 5 dəqiqə" to Pair("Не менее 5 минут в день","At least 5 minutes daily"),
+        "Ümumi: " to Pair("Всего: ","Total: "),
+        "Aktiv gün: " to Pair("Активных дней: ","Active days: "),
+        "gün" to Pair("дн.","days"),
+        "dəq" to Pair("мин","min"),
+        "aktiv oxu günü" to Pair("дней чтения","active reading days"),
+        "kitab" to Pair("книг","books"),
+        "kitab bitirilib" to Pair("прочитано книг","books finished"),
+        "s" to Pair("ч","h"),
+        "d" to Pair("м","m"),
+        "növbəti: " to Pair("следующий уровень: ","next: "),
+        "EPUB, PDF, CBZ və Markdown əlavə et" to Pair("Добавьте EPUB, PDF, CBZ или Markdown","Add EPUB, PDF, CBZ or Markdown"),
+        "Bu əməliyyat geri qaytarıla bilməz." to Pair("Это действие необратимо.","This cannot be undone."),
+        "Oxuma mövqeyi saxlanıldı" to Pair("Позиция чтения сохранена","Reading position saved"),
+        "Kitabxanadakı tema oxuyucuda da tətbiq edilir." to Pair("Тема библиотеки применяется в читалке.","Reader follows the library theme."),
+        "Şrift, sətirarası məsafə, ekran istiqaməti və zoom kitabın daxilindəki Aa menyusundan dəyişdirilir." to Pair("Шрифт, интервал, ориентация и масштаб меняются в меню Aa при чтении.","Font, spacing, orientation and zoom are adjusted in the reader's Aa menu.")
     )
     fun translate(text:String,language:String):String {
         if(language=="az")return when(text) {
@@ -304,6 +326,41 @@ object UiLanguage {
             }
         }
         // Keep numeric values and user-owned names unchanged; translate only UI prefixes.
+        val streak=Regex("""^(🔥 )?(\d+) gün$""").matchEntire(text)
+        if(streak!=null)return streak.groupValues[1]+streak.groupValues[2]+
+            if(language=="ru")" дн." else " days"
+        val minutes=Regex("""^(\d+) dəq$""").matchEntire(text)
+        if(minutes!=null)return minutes.groupValues[1]+
+            if(language=="ru")" мин" else " min"
+        val total=Regex("""^(Ümumi: |Aktiv gün: )(\d+)$""").matchEntire(text)
+        if(total!=null) {
+            val prefix=dictionary[total.groupValues[1]]
+            return (if(language=="ru")prefix?.first else prefix?.second).orEmpty()+total.groupValues[2]
+        }
+        val hours=Regex("""^(\d+) s (\d+) d$""").matchEntire(text)
+        if(hours!=null)return if(language=="ru")
+            "${hours.groupValues[1]} ч ${hours.groupValues[2]} мин"
+        else "${hours.groupValues[1]} h ${hours.groupValues[2]} min"
+        val level=Regex("""^(I|II|III) · (Kəşfiyyatçı|Səyyah|Ustad) · (\d+) kitab( · növbəti: (\d+))?$""").matchEntire(text)
+        if(level!=null) {
+            val title=dictionary[level.groupValues[2]]
+            val rendered=(if(language=="ru")title?.first else title?.second)
+                ?:level.groupValues[2]
+            val label=if(language=="ru")"книг" else "books"
+            val next=level.groupValues[5]
+            return "${level.groupValues[1]} · $rendered · ${level.groupValues[3]} $label"+
+                (if(next.isNotEmpty())(if(language=="ru")" · следующий уровень: " else " · next: ")+next else "")
+        }
+        if(text.startsWith("🏆 ")) {
+            val name=text.removePrefix("🏆 ")
+            val result=dictionary[name]
+            if(result!=null)return "🏆 "+(if(language=="ru")result.first else result.second)
+        }
+        if(text.startsWith("📚 ")) {
+            val name=text.removePrefix("📚 ")
+            val result=dictionary[name]
+            if(result!=null)return "📚 "+(if(language=="ru")result.first else result.second)
+        }
         val numeric=Regex("""^(Fəsil|Səhifə)\s+(\d+)(.*)$""").matchEntire(text)
         if(numeric!=null) {
             val label=dictionary[numeric.groupValues[1]]
