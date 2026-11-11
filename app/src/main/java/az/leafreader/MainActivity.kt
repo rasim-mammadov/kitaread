@@ -1204,8 +1204,10 @@ private fun ReaderScreen(
                             "img,svg{max-width:100%!important;height:auto!important;}"+
                             columns+textRules+"</style>"
                         val html=pageFile.readText(Charsets.UTF_8)
-                        val result=if(html.contains("</head>",true))
+                        val prepared=if(html.contains("</head>",true))
                             html.replace("</head>",css+"</head>",true) else css+html
+                        val result=EpubThemeFix.insert(prepared,
+                            EpubThemeFix.overrideCss(background,foreground))
                         view.loadDataWithBaseURL(pageFile.parentFile!!.toURI().toString(),
                             result,"text/html","UTF-8",null)
                         webView=view
