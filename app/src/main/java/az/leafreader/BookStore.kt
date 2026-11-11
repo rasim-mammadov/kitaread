@@ -60,11 +60,15 @@ class BookStore(private val context: Context) {
         val target=items.firstOrNull {it.optString("path")==path} ?:return
         if(deleteFiles) {
             val root=context.filesDir.canonicalFile
-            listOf(target.optString("path"),target.optString("cover"))
-                .filter {it.isNotBlank()}.forEach {relative->
-                    val file=File(root,relative).canonicalFile
-                    if(file.parentFile==root && file.isFile)file.delete()
-                }
+            val main=File(root,target.optString("path")).canonicalFile
+            require(main.parentFile==root){"Fayl yolu etibarsızdır"}
+            if(main.isFile && !main.delete())
+                error("Kitab faylı silinmədi. Kitabxana qeydi qorundu.")
+            val cover=target.optString("cover")
+            if(cover.isNotBlank()) {
+                val coverFile=File(root,cover).canonicalFile
+                if(coverFile.parentFile==root && coverFile.isFile)coverFile.delete()
+            }
             val cache=File(context.cacheDir,"epub_v3_"+path.substringBeforeLast('.')).canonicalFile
             if(cache.parentFile==context.cacheDir.canonicalFile)cache.deleteRecursively()
         }
