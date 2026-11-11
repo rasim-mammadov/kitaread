@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="1254" android:viewportHeight="1254">
+    <!-- Contour traced from user's newest K-book logo, without old side bars/dots. -->
+    <path android:fillColor="#001523" android:fillType="evenOdd"
+        android:pathData="M234,462 L233,873 L325,843 L393,838 L451,847 L507,868 L538,888 L546,883 L539,867 L512,846 L476,830 L419,817 L347,817 L256,840 L256,479 L273,477 L334,483 L384,498 L386,775 L442,789 L495,815 L530,842 L575,891 L584,893 L592,886 L593,851 L673,775 L776,875 L1003,875 L784,673 L1030,434 L897,441 L843,452 L785,473 L738,503 L594,645 L590,496 L559,450 L498,403 L449,382 L392,371 L384,380 L383,471 L331,458 L285,453 L244,455 Z M968,460 L749,674 L938,852 L788,852 L678,744 L593,820 L593,676 L754,521 L804,490 L850,474 L917,462 Z M409,398 L458,412 L504,437 L547,475 L566,504 L567,844 L534,813 L498,789 L458,770 L409,754 Z" />
+</vector>
