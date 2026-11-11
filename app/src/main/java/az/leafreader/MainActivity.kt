@@ -310,6 +310,33 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 (0 until collections.length()).any {collections.optString(it)==collectionFilter})
                     }
                     val ordered=store.sortBooks(visible,sortMode)
+                    val recent=if(filter=="Hamısı" && search.isBlank())
+                        ordered.firstOrNull {book->
+                            book.status=="Oxunur" &&
+                            (store.find(book.path)?.optLong("lastReadTimestamp",0L) ?:0L)>0L
+                        } else null
+                    if(recent!=null) {
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .clickable {openingMark=null;selectedPath=recent.path}
+                                .padding(vertical=8.dp,horizontal=4.dp),
+                            verticalAlignment=Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.PlayArrow,null,
+                                tint=MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(8.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text("Oxumağa davam et",
+                                    fontSize=12.sp,color=MaterialTheme.colorScheme.primary)
+                                Text(recent.title,maxLines=1,
+                                    overflow=TextOverflow.Ellipsis,
+                                    color=MaterialTheme.colorScheme.onBackground,
+                                    fontWeight=FontWeight.SemiBold)
+                            }
+                            Text("${recent.progress}%",fontSize=12.sp,
+                                color=MaterialTheme.colorScheme.onBackground)
+                        }
+                    }
                     if(ordered.isEmpty()) {
                         Box(Modifier.fillMaxSize().padding(bottom=60.dp),contentAlignment=Alignment.Center) {
                             Column(horizontalAlignment=Alignment.CenterHorizontally) {
