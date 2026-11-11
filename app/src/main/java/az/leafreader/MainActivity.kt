@@ -215,7 +215,7 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
     var theme by remember {mutableStateOf(prefs.getString("theme","Sepia") ?: "Sepia")}
     var font by remember {mutableFloatStateOf(prefs.getInt("fontSize",20).toFloat())}
     var line by remember {mutableFloatStateOf(prefs.getInt("lineSpacing",160).toFloat())}
-    var mode by remember {mutableStateOf(prefs.getString("epubMode","pages") ?: "pages")}
+    var mode by remember {mutableStateOf(prefs.getString("epubMode","scroll") ?: "scroll")}
     var swipe by remember {mutableStateOf(prefs.getBoolean("swipeTurn",true))}
     var arrows by remember {mutableStateOf(prefs.getBoolean("sideButtons",false))}
     var chrome by remember {mutableStateOf(false)}
@@ -378,16 +378,22 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
                         val background=when(theme){"Dark"->"#1C2229";"AMOLED"->"#000000";"Sepia"->"#F3E9D8";else->"#FFFFFF"}
                         val foreground=if(theme in listOf("Dark","AMOLED"))"#F6F2E8" else "#352F29"
                         val columns=if(mode=="pages")
-                            "html{overflow-x:auto!important;overflow-y:hidden!important;height:100%!important;}"+
-                            "body{height:100vh!important;column-width:calc(100vw - 48px)!important;"+
-                            "column-gap:48px!important;column-fill:auto!important;overflow:visible!important;}"
-                        else "html{overflow-x:hidden!important;overflow-y:auto!important;}"
+                            "html{width:100%!important;height:100%!important;overflow-x:auto!important;overflow-y:hidden!important;}"+
+                            "body{width:100%!important;height:100%!important;min-height:0!important;"+
+                            "-webkit-column-width:calc(100vw - 48px)!important;column-width:calc(100vw - 48px)!important;"+
+                            "-webkit-column-gap:48px!important;column-gap:48px!important;"+
+                            "column-fill:auto!important;overflow:visible!important;}"+
+                            "p,div,section,article{break-before:auto!important;break-after:auto!important;}"
+                        else "html{width:100%!important;height:auto!important;overflow-x:hidden!important;overflow-y:auto!important;}"+
+                            "body{width:100%!important;height:auto!important;min-height:100%!important;"+
+                            "column-count:initial!important;column-width:auto!important;overflow:visible!important;}"
                         val css="<meta name='viewport' content='width=device-width,initial-scale=1.0' />"+
                             "<style>html{margin:0!important;padding:0!important;}body{"+
                             "background:"+background+"!important;color:"+foreground+"!important;"+
                             "font-size:"+font.toInt()+"px!important;line-height:"+(line/100f)+"!important;"+
                             "padding:24px!important;margin:0!important;box-sizing:border-box!important;}"+
-                            "img,svg{max-width:100%!important;height:auto!important;}"+columns+"</style>"
+                            "img,svg{max-width:100%!important;height:auto!important;}"+
+                            "p{white-space:normal!important;overflow:visible!important;}"+columns+"</style>"
                         val html=pageFile.readText(Charsets.UTF_8)
                         val result=if(html.contains("</head>",true))
                             html.replace("</head>",css+"</head>",true) else css+html
