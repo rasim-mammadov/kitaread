@@ -142,17 +142,12 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         libraryVersion++
     }
     var showDashboard by remember {mutableStateOf(false)}
-    var showJournal by remember {mutableStateOf(false)}
     var showSettingsHome by remember {mutableStateOf(false)}
     var showAdvancedFilters by remember {mutableStateOf(false)}
     var showSearch by remember {mutableStateOf(false)}
     var layoutMode by remember {
         mutableStateOf(store.setting().getString("libraryLayout","list") ?: "list")
     }
-    var groupMode by remember {
-        mutableStateOf(store.setting().getString("libraryGroup","none") ?: "none")
-    }
-    var showGroupMenu by remember {mutableStateOf(false)}
     var selecting by remember {mutableStateOf(false)}
     var selectedBooks by remember {mutableStateOf<Set<String>>(emptySet())}
     var showBulkHideConfirm by remember {mutableStateOf(false)}
@@ -213,7 +208,6 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
             showAdvancedFilters ->showAdvancedFilters=false
             showGlobalBookmarks ->showGlobalBookmarks=false
             showDashboard ->showDashboard=false
-            showJournal ->showJournal=false
             showSearch ->{showSearch=false;search=""}
             else ->showExitConfirmation=true
         }
@@ -314,35 +308,11 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
             }finally {backupBusy=false}
         }
     }
-    val journalMarkdownExport=rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("text/markdown")) {uri->
-        if(uri!=null)try {
-            context.contentResolver.openOutputStream(uri)?.use {
-                it.write(ReadingJournal.exportMarkdown(store.records()).toByteArray(Charsets.UTF_8))
-            } ?:error("Yazma icazəsi yoxdur")
-        }catch(e:Exception){
-            Toast.makeText(context,e.message ?: "Export error",Toast.LENGTH_LONG).show()
-        }
-    }
-    val journalJsonExport=rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")) {uri->
-        if(uri!=null)try {
-            context.contentResolver.openOutputStream(uri)?.use {
-                it.write(ReadingJournal.exportJson(store.records()).toByteArray(Charsets.UTF_8))
-            } ?:error("Yazma icazəsi yoxdur")
-        }catch(e:Exception){
-            Toast.makeText(context,e.message ?: "Export error",Toast.LENGTH_LONG).show()
-        }
-    }
     CompositionLocalProvider(LocalUiLanguage provides language) {
     MaterialTheme(colorScheme=appColors,
         shapes=Shapes(medium=RoundedCornerShape(16.dp),large=RoundedCornerShape(24.dp))) {
         if(selected==null && showDashboard) {
             ReadingDashboard(store,onBack={showDashboard=false})
-        } else if(selected==null && showJournal) {
-            ReadingJournalScreen(store,onBack={showJournal=false;refreshLibrary()},
-                onExportMarkdown={journalMarkdownExport.launch("leaf-reader-journal.md")},
-                onExportJson={journalJsonExport.launch("leaf-reader-knowledge.json")})
         } else if(selected==null) {
             Scaffold(
                 contentWindowInsets=WindowInsets.safeDrawing,
@@ -370,28 +340,6 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 Icon(if(layoutMode=="list")Icons.Default.GridView
                                     else Icons.Default.ViewList,ui("Görünüşü dəyiş"))
                             }
-                            Box {
-                                TextButton(onClick={showGroupMenu=true}) {
-                                    Icon(Icons.Default.AccountTree,null,Modifier.size(17.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(ui(when(groupMode) {
-                                        "author"->"Müəllif üzrə"
-                                        "series"->"Seriya üzrə"
-                                        else->"Qruplaşdırma yoxdur"
-                                    }),fontSize=12.sp)
-                                }
-                                DropdownMenu(expanded=showGroupMenu,onDismissRequest={showGroupMenu=false}) {
-                                    listOf("none" to "Qruplaşdırma yoxdur",
-                                        "author" to "Müəllif üzrə",
-                                        "series" to "Seriya üzrə").forEach { (value,label)->
-                                        DropdownMenuItem(text={Text(ui(label))},onClick={
-                                            groupMode=value
-                                            store.setting().edit().putString("libraryGroup",value).apply()
-                                            showGroupMenu=false
-                                        })
-                                    }
-                                }
-                            }
                             Spacer(Modifier.weight(1f))
                             TextButton(onClick={
                                 if(selecting) stopSelection() else selecting=true
@@ -408,13 +356,6 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 Icon(Icons.Default.BarChart,null,Modifier.size(17.dp))
                                 Spacer(Modifier.width(4.dp))
                                 Text(ui("Statistika"),fontSize=11.sp)
-                            }
-                            OutlinedButton(onClick={showJournal=true},
-                                modifier=Modifier.weight(1f),
-                                contentPadding=PaddingValues(horizontal=5.dp,vertical=6.dp)) {
-                                Icon(Icons.Default.EditNote,null,Modifier.size(17.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text(ui("Gündəlik"),fontSize=11.sp)
                             }
                             OutlinedButton(onClick={showGlobalBookmarks=true},
                                 modifier=Modifier.weight(1f),
@@ -505,7 +446,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 (0 until collections.length()).any {collections.optString(it)==collectionFilter})
                     }
                     val ordered=store.sortBooks(visible,sortMode)
-                    val recent=if(!selecting && groupMode=="none" && filter=="Hamısı" && search.isBlank())
+                    val recent=if(!selecting && filter=="Hamısı" && search.isBlank())
                         ordered.firstOrNull {book->
                             book.status=="Oxunur" &&
                             (recordsByPath[book.path]?.optLong("lastReadTimestamp",0L) ?:0L)>0L
@@ -532,11 +473,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 color=MaterialTheme.colorScheme.onBackground)
                         }
                     }
-                    val grouped=if(groupMode=="none") listOf("" to ordered)
-                        else ordered.groupBy { book->
-                            SmartLibrary.groupName(book,recordsByPath[book.path],groupMode)
-                        }.toSortedMap(String.CASE_INSENSITIVE_ORDER)
-                            .toList()
+                    val grouped=listOf("" to ordered)
                     if(selecting) {
                         Surface(color=MaterialTheme.colorScheme.surface,
                             shape=RoundedCornerShape(14.dp)) {
@@ -570,9 +507,6 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 Spacer(Modifier.height(16.dp))
                                 Text(ui("Burada hələ kitab yoxdur"),fontSize=20.sp,fontWeight=FontWeight.SemiBold)
                                 Spacer(Modifier.height(8.dp))
-                                Text(ui(if(books.isEmpty())"EPUB, PDF, CBZ və Markdown əlavə et"
-                                    else "Axtarış və filtrlərə uyğun kitab tapılmadı"),
-                                    color=MaterialTheme.colorScheme.onSurfaceVariant)
                                 if(books.isNotEmpty()) {
                                     TextButton(onClick={
                                         search="";filter="Hamısı"
@@ -588,7 +522,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                             horizontalArrangement=Arrangement.spacedBy(10.dp),
                             verticalArrangement=Arrangement.spacedBy(10.dp)) {
                             grouped.forEach { (heading,groupBooks)->
-                                if(groupMode!="none") item(span={GridItemSpan(maxLineSpan)}) {
+                                if(false) item(span={GridItemSpan(maxLineSpan)}) {
                                     Text(heading,fontWeight=FontWeight.Bold,fontSize=16.sp,
                                         modifier=Modifier.padding(top=10.dp,bottom=2.dp))
                                 }
@@ -604,7 +538,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                     } else LazyColumn(contentPadding=PaddingValues(bottom=96.dp),
                         verticalArrangement=Arrangement.spacedBy(12.dp)) {
                         grouped.forEach { (heading,groupBooks)->
-                            if(groupMode!="none") item {
+                            if(false) item {
                                 Text(heading,fontWeight=FontWeight.Bold,fontSize=16.sp,
                                     modifier=Modifier.padding(top=10.dp,bottom=2.dp))
                             }
@@ -780,31 +714,34 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                 onDismissRequest={menuBook=null},
                 title={Text(book.title,maxLines=2)},
                 text={
-                    Column {
-                        TextButton(onClick={
-                            detailsBook=book
-                            menuBook=null
-                        },modifier=Modifier.fillMaxWidth()) {
-                            Text(ui("Kitab detalları və status"))
+                    Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        @Composable fun MenuChoice(label:String,icon:androidx.compose.ui.graphics.vector.ImageVector,
+                            danger:Boolean=false,action:()->Unit) {
+                            OutlinedCard(onClick=action,modifier=Modifier.fillMaxWidth(),
+                                shape=RoundedCornerShape(12.dp)) {
+                                Row(Modifier.fillMaxWidth().padding(horizontal=14.dp,vertical=13.dp),
+                                    verticalAlignment=Alignment.CenterVertically) {
+                                    Icon(icon,null,tint=if(danger)MaterialTheme.colorScheme.error
+                                        else MaterialTheme.colorScheme.primary)
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(ui(label),modifier=Modifier.weight(1f),
+                                        textAlign=androidx.compose.ui.text.style.TextAlign.Start,
+                                        color=if(danger)MaterialTheme.colorScheme.error
+                                            else MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
                         }
-                        TextButton(onClick={
-                            store.hideBook(book.path,true)
-                            refreshLibrary()
-                            menuBook=null
-                        },modifier=Modifier.fillMaxWidth()) {
-                            Icon(Icons.Default.VisibilityOff,null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(ui("Kitabxanadan gizlət"))
+                        MenuChoice("Kitab detalları və status",Icons.Default.Edit) {
+                            detailsBook=book;menuBook=null
                         }
-                        TextButton(onClick={
+                        MenuChoice("Kitabxanadan gizlət",Icons.Default.VisibilityOff) {
+                            store.hideBook(book.path,true);refreshLibrary();menuBook=null
+                        }
+                        MenuChoice("Kitabxanadan çıxar (fayl qalsın)",Icons.Default.RemoveCircleOutline) {
                             deleteMode="remove";deleteBook=book;menuBook=null
-                        },modifier=Modifier.fillMaxWidth()) {
-                            Text(ui("Kitabxanadan çıxar (fayl qalsın)"))
                         }
-                        TextButton(onClick={
+                        MenuChoice("Kitab və məlumatlarını tamamilə sil",Icons.Default.DeleteOutline,true) {
                             deleteMode="delete";deleteBook=book;menuBook=null
-                        },modifier=Modifier.fillMaxWidth()) {
-                            Text(ui("Kitab və məlumatlarını tamamilə sil"))
                         }
                     }
                 },
