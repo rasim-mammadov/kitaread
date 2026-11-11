@@ -921,6 +921,16 @@ private fun ReaderScreen(
         mutableStateOf(optionBoolean("smoothPageTurns",
             prefs.getBoolean("smoothPageTurns",true)))
     }
+    var comicMode by remember(book.path) {
+        mutableStateOf(ComicModes.valid(store.find(book.path)?.optString("comicMode","single") ?: "single"))
+    }
+    var comicRtl by remember(book.path) {
+        mutableStateOf(store.find(book.path)?.optBoolean("comicRtl",
+            prefs.getBoolean("cbzRtl",false)) ?:false)
+    }
+    var comicGap by remember(book.path) {
+        mutableIntStateOf(store.find(book.path)?.optInt("comicPageGap",0)?.coerceIn(0,40) ?:0)
+    }
     var pageAnimator by remember(book.path) {mutableStateOf<ValueAnimator?>(null)}
     val lifecycleOwner=LocalLifecycleOwner.current
     val readingClock=remember(book.path) {ReadingClock()}
@@ -1062,10 +1072,12 @@ private fun ReaderScreen(
                 }
             }
         }
-        val actual=if(book.type=="cbz" && prefs.getBoolean("cbzRtl",false)) -dir else dir
+        val step=if(book.type=="cbz" && comicMode==ComicModes.DOUBLE)2 else 1
+        val actual=dir*step
         val count=if(isTextBook)chapterFiles.size else pageCount
         if(chapter+actual in 0 until count) {
-            chapter+=actual
+            chapter=if(book.type=="cbz" && comicMode==ComicModes.DOUBLE)
+                ComicModes.firstPage(chapter+actual,comicMode) else chapter+actual
             fraction=if(dir<0)0.98 else 0.0
             saveProgress(fraction)
         } else if(dir>0) {
@@ -1215,6 +1227,15 @@ private fun ReaderScreen(
                         view
                     },modifier=Modifier.fillMaxSize())
                 }
+            } else if(book.type=="cbz" && comicMode==ComicModes.WEBTOON) {
+                ComicWebtoon(bookFile,pageCount,chapter,comicGap,
+                    onPageChanged={index->
+                        if(chapter!=index) {
+                            chapter=index
+                            saveProgress(0.0)
+                        }
+                    },
+                    onToggleControls={chrome=!chrome})
             } else {
                 // Keep the previous rendered bitmap on screen until the next page is
                 // ready. Do not tear down/recreate the zoom view for each turn.
@@ -1227,19 +1248,24 @@ private fun ReaderScreen(
                     }
                 }
                 val prefetchScope=rememberCoroutineScope()
-                LaunchedEffect(chapter,book.path) {
+                LaunchedEffect(chapter,book.path,comicMode,comicRtl) {
                     try {
                         val index=chapter
                         val next=withContext(Dispatchers.IO) {
-                            pageCache.get(index) ?:ReaderMedia.page(bookFile,book.type,index).also {
-                                pageCache.put(index,it)
-                            }
+                            fun load(page:Int):Bitmap =
+                                pageCache.get(page) ?:ReaderMedia.page(bookFile,book.type,page).also {
+                                    pageCache.put(page,it)
+                                }
+                            val first=load(index)
+                            if(book.type=="cbz" && comicMode==ComicModes.DOUBLE) {
+                                val second=if(index+1<pageCount)load(index+1) else null
+                                ComicSpread.combine(first,second,comicRtl)
+                            }else first
                         }
                         displayedBitmap=next
                         loadError=null
                         // Neighbouring pages decode off the UI thread for a fast next turn.
-                        val neighbor=if(book.type=="cbz" && prefs.getBoolean("cbzRtl",false))
-                            index-1 else index+1
+                        val neighbor=index+if(comicMode==ComicModes.DOUBLE && book.type=="cbz")2 else 1
                         if(neighbor in 0 until pageCount && pageCache.get(neighbor)==null) {
                             prefetchScope.launch(Dispatchers.IO) {
                                 runCatching {
@@ -1267,6 +1293,7 @@ private fun ReaderScreen(
                             ZoomPageView(ctx,
                                 onNext={if(swipe)nextTurn(1)},
                                 onPrevious={if(swipe)nextTurn(-1)},
+                                rtlSwipe=(book.type=="cbz" && comicRtl),
                                 onToggleControls={controls()},
                                 onZoomChanged={zoom->prefs.edit().putFloat("zoom",zoom).apply()})
                         },
@@ -1284,7 +1311,7 @@ private fun ReaderScreen(
                     )
                 }
             }
-            if(arrows) {
+            if(arrows && !(book.type=="cbz" && comicMode==ComicModes.WEBTOON)) {
                 Row(Modifier.fillMaxWidth().align(Alignment.Center),horizontalArrangement=Arrangement.SpaceBetween,
                     verticalAlignment=Alignment.CenterVertically) {
                     FilledTonalIconButton(onClick={turn(-1)},modifier=Modifier.size(52.dp),
@@ -1532,6 +1559,40 @@ private fun ReaderScreen(
                             label={Text(ui("Səhifələmə"))})
                         FilterChip(mode=="scroll",{mode="scroll";prefs.edit().putString("epubMode",mode).apply()},
                             label={Text(ui("Continuous scroll"))})
+                    }
+                }
+                if(book.type=="cbz") {
+                    HorizontalDivider(Modifier.padding(vertical=12.dp))
+                    Text("📚  "+ui("Komiks oxuma rejimi"),
+                        fontWeight=FontWeight.SemiBold)
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            ComicModes.SINGLE to "Tək səhifə",
+                            ComicModes.DOUBLE to "İki səhifə",
+                            ComicModes.WEBTOON to "Webtoon"
+                        ).forEach {(value,label)->
+                            FilterChip(selected=comicMode==value,onClick={
+                                comicMode=value
+                                chapter=ComicModes.firstPage(chapter,value)
+                                store.change(book.path){it.put("comicMode",value)}
+                            },label={Text(ui(label))})
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                        Text("↔️  "+ui("Manga: sağdan sola"),modifier=Modifier.weight(1f))
+                        Switch(checked=comicRtl,onCheckedChange={value->
+                            comicRtl=value
+                            store.change(book.path){it.put("comicRtl",value)}
+                        })
+                    }
+                    if(comicMode==ComicModes.WEBTOON) {
+                        Text(ui("Səhifələrarası məsafə")+" · $comicGap dp",
+                            fontWeight=FontWeight.SemiBold)
+                        Slider(comicGap.toFloat(),onValueChange={value->
+                            comicGap=value.toInt()
+                            store.change(book.path){it.put("comicPageGap",comicGap)}
+                        },valueRange=0f..40f,steps=7)
                     }
                 }
                 HorizontalDivider(Modifier.padding(vertical=12.dp))
