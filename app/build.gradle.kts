@@ -10,8 +10,8 @@ android {
         applicationId = "az.leafreader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 14
-        versionName = "3.3.3-preview"
+        versionCode = 15
+        versionName = "3.3.4-preview"
     }
     buildFeatures { compose = true }
     compileOptions {
