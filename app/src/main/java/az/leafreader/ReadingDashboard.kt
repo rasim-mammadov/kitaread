@@ -41,8 +41,8 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack,"Kitabxanaya qayıt")
                 }
                 Column(Modifier.padding(start=4.dp)) {
-                    Text("Oxu statistikası",fontSize=23.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface)
-                    Text("Yalnız bu cihazdakı oxu məlumatları",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(ui("Oxu statistikası"),fontSize=23.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface)
+                    Text(ui("Yalnız bu cihazdakı oxu məlumatları"),fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -74,9 +74,9 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                     shape=RoundedCornerShape(22.dp)) {
                     Column(Modifier.fillMaxWidth().padding(18.dp),
                         verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                        Text("Oxu təqvimi · son 14 gün",fontSize=18.sp,
+                        Text(ui("Oxu təqvimi · son 14 gün"),fontSize=18.sp,
                             fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface)
-                        Text("Bir günün aktiv sayılması üçün ən az 5 dəqiqə oxu tələb olunur.",
+                        Text(ui("Bir günün aktiv sayılması üçün ən az 5 dəqiqə oxu tələb olunur."),
                             fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         val byDay=overview.daily.associate {it.day to it.minutes}
                         val days=(13 downTo 0).map {LocalDate.now().minusDays(it.toLong())}
@@ -95,7 +95,7 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                                             horizontalAlignment=Alignment.CenterHorizontally) {
                                             Box(Modifier.fillMaxWidth().height(35.dp)
                                                 .background(shade,RoundedCornerShape(9.dp)))
-                                            Text(day.dayOfMonth.toString(),fontSize=10.sp,
+                                            Text(ui(day.dayOfMonth.toString()),fontSize=10.sp,
                                                 color=MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
@@ -110,7 +110,7 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                     shape=RoundedCornerShape(22.dp)) {
                     Column(Modifier.fillMaxWidth().padding(18.dp),
                         verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                        Text("Son 6 ay · Bitirilmiş kitablar",fontSize=18.sp,
+                        Text(ui("Son 6 ay · Bitirilmiş kitablar"),fontSize=18.sp,
                             fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface)
                         val maxCount=(overview.completedMonthly.maxOfOrNull {it.second} ?: 0).coerceAtLeast(1)
                         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),
@@ -118,13 +118,13 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                             overview.completedMonthly.forEach {entry->
                                 Column(Modifier.weight(1f),
                                     horizontalAlignment=Alignment.CenterHorizontally) {
-                                    Text(entry.second.toString(),fontSize=11.sp,color=MaterialTheme.colorScheme.primary)
+                                    Text(ui(entry.second.toString()),fontSize=11.sp,color=MaterialTheme.colorScheme.primary)
                                     Spacer(Modifier.height(5.dp))
                                     Box(Modifier.fillMaxWidth().height(
                                         (9f+75f*entry.second/maxCount).dp)
                                         .background(if(entry.second>0)Forest else Color(0xFFE7ECE7),
                                             RoundedCornerShape(topStart=7.dp,topEnd=7.dp)))
-                                    Text(entry.first,fontSize=10.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(ui(entry.first),fontSize=10.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
@@ -136,7 +136,7 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                     shape=RoundedCornerShape(22.dp)) {
                     Column(Modifier.fillMaxWidth().padding(18.dp),
                         verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                        Text("Kitabxana tərkibi",fontSize=18.sp,
+                        Text(ui("Kitabxana tərkibi"),fontSize=18.sp,
                             fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onSurface)
                         LibraryMeter("EPUB",overview.epubBooks,overview.totalBooks)
                         LibraryMeter("PDF",overview.pdfBooks,overview.totalBooks)
@@ -149,7 +149,7 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                     shape=RoundedCornerShape(22.dp)) {
                     Column(Modifier.fillMaxWidth().padding(18.dp),
                         verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                        Text("Oxucu pasportu",fontSize=20.sp,fontWeight=FontWeight.Bold,
+                        Text(ui("Oxucu pasportu"),fontSize=20.sp,fontWeight=FontWeight.Bold,
                             color=MaterialTheme.colorScheme.onSurface)
                         val earned=remember {GenreCatalog.earned(store.records())}
                         val savedTitle=remember {store.setting().getString("readerTitle","")}
@@ -158,33 +158,33 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                         }
                         val unlocked=earned.map {GenreCatalog.title(it.first)}.distinct()
                         val displayedTitle=if(chosen in unlocked)chosen else unlocked.firstOrNull().orEmpty()
-                        Text(if(displayedTitle.isNotBlank())"🏆 ${displayedTitle}" else "📚 Kitab Kəşfiyyatçısı",
+                        Text(ui(if(displayedTitle.isNotBlank())"🏆 ${displayedTitle}" else "📚 Kitab Kəşfiyyatçısı"),
                             fontSize=18.sp,fontWeight=FontWeight.SemiBold)
-                        Text("${overview.finishedBooks} kitab bitirilib · "+
-                            "${overview.activeDays} aktiv oxu günü",
+                        Text(ui("${overview.finishedBooks} kitab bitirilib · "+
+                            "${overview.activeDays} aktiv oxu günü"),
                             fontSize=14.sp,color=MaterialTheme.colorScheme.primary)
                         if(earned.isEmpty()) {
-                            Text("Janra uyğun titul üçün janrı müəyyən edilmiş kitabı bitir.",
+                            Text(ui("Janra uyğun titul üçün janrı müəyyən edilmiş kitabı bitir."),
                                 fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         } else {
-                            Text("Qazandığın titullar",fontWeight=FontWeight.Medium)
+                            Text(ui("Qazandığın titullar"),fontWeight=FontWeight.Medium)
                             earned.forEach { (genre,count)->
                                 val title=GenreCatalog.title(genre)
                                 Row(Modifier.fillMaxWidth(),
                                     verticalAlignment=Alignment.CenterVertically) {
                                     Column(Modifier.weight(1f)) {
-                                        Text("${title} · ${genre}",fontSize=13.sp)
-                                        Text("${GenreCatalog.level(count)} · ${count} kitab"+
+                                        Text(ui("${title} · ${genre}"),fontSize=13.sp)
+                                        Text(ui("${GenreCatalog.level(count)} · ${count} kitab"+
                                             (GenreCatalog.nextMilestone(count)?.let {
                                                 " · növbəti: ${it}"
-                                            } ?: ""),
+                                            } ?: "")),
                                             color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=11.sp)
                                     }
                                     TextButton(onClick={
                                         chosen=title
                                         store.setting().edit().putString("readerTitle",title).apply()
                                     }) {
-                                        Text(if(displayedTitle==title)"Seçilib" else "Seç",
+                                        Text(ui(if(displayedTitle==title)"Seçilib" else "Seç"),
                                             fontSize=12.sp)
                                     }
                                 }
@@ -202,9 +202,9 @@ private fun MetricTile(label:String,value:String,sub:String,modifier:Modifier=Mo
         colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface)) {
         Column(Modifier.fillMaxWidth().padding(15.dp),
             verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            Text(label,fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value,fontSize=22.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface)
-            Text(sub,fontSize=11.sp,color=MaterialTheme.colorScheme.primary)
+            Text(ui(label),fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(ui(value),fontSize=22.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.onSurface)
+            Text(ui(sub),fontSize=11.sp,color=MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -212,8 +212,8 @@ private fun MetricTile(label:String,value:String,sub:String,modifier:Modifier=Mo
 private fun LibraryMeter(label:String,count:Int,total:Int) {
     Column(verticalArrangement=Arrangement.spacedBy(5.dp)) {
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
-            Text(label,fontSize=14.sp)
-            Text(count.toString(),fontSize=14.sp,color=MaterialTheme.colorScheme.primary)
+            Text(ui(label),fontSize=14.sp)
+            Text(ui(count.toString()),fontSize=14.sp,color=MaterialTheme.colorScheme.primary)
         }
         LinearProgressIndicator(progress={if(total>0)count.toFloat()/total else 0f},
             modifier=Modifier.fillMaxWidth().height(6.dp),
