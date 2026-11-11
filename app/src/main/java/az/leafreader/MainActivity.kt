@@ -1,1040 +1,527 @@
 package az.leafreader
 
-import android.app.*
-import android.os.*
-import android.content.*
-import android.graphics.*
-import android.net.Uri
-import android.provider.OpenableColumns
-import android.view.*
-import android.webkit.*
-import android.widget.*
-import android.util.Xml
-import org.json.*
-import org.xmlpull.v1.XmlPullParser
-import java.io.*
-import java.util.zip.ZipFile
-import kotlin.math.*
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Color as AndroidColor
+import android.os.Bundle
+import android.view.MotionEvent
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
-class MainActivity : Activity() {
-    private val prefs by lazy { getSharedPreferences("library", MODE_PRIVATE) }
-    private val books = mutableListOf<JSONObject>()
-    private lateinit var root: LinearLayout
-    private var current: JSONObject? = null
-    private var pdf: android.graphics.pdf.PdfRenderer? = null
-    private var pdfDescriptor: ParcelFileDescriptor? = null
-    private var page = 0
-    private var total = 1
-    private var web: WebView? = null
-    private var epubChapters = listOf<File>()
-    private var imageEntries = listOf<String>()
-    private var zip: ZipFile? = null
-    private var controls: TextView? = null
-    private var readerContainer: FrameLayout? = null
-    private var readerBitmap: Bitmap? = null
-    private val teal = Color.rgb(26, 107, 104)
-    private val saveHandler = Handler(Looper.getMainLooper())
-    private var pendingSave: Runnable? = null
-    private var restoringPosition = false
-    private var activeReaderView: View? = null
-    private var headerView: View? = null
-    private var footerView: View? = null
-    private var sideButtons: View? = null
-    private var readerBarsVisible = true
-    private var epubPageCount = 1
-    private var epubPageIndex = 0
-    private var epubReady = false
-    private fun pagedEpub() = settings.getString("epubMode", "pages") == "pages"
-    private var readingSince = 0L
-    private fun accountReadingTime() {
-        val book=current ?: return
-        if(readingSince<=0L)return
-        val elapsed=(android.os.SystemClock.elapsedRealtime()-readingSince).coerceAtLeast(0L)
-        if(elapsed>0L && elapsed<12L*60*60*1000) {
-            book.put("readingMs",book.optLong("readingMs",0L)+elapsed)
-        }
-        readingSince=0L
-        save()
-    }
-    private val settings by lazy { getSharedPreferences("reader_settings", MODE_PRIVATE) }
-    private fun setFullScreen(enabled: Boolean) {
-        // Respect Android status and gesture bar safe areas even inside a book.
+private val Ink=Color(0xFF1C3332)
+private val Accent=Color(0xFF267A71)
+private val Cream=Color(0xFFF8F6F0)
+private val Gray=Color(0xFF667571)
+private val Space=Color(0xFFEEEFE9)
+
+class MainActivity:ComponentActivity() {
+    override fun onCreate(savedInstanceState:Bundle?) {
+        super.onCreate(savedInstanceState)
         @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = 0
-        if (::root.isInitialized && Build.VERSION.SDK_INT >= 35) root.requestApplyInsets()
+        window.decorView.systemUiVisibility=0
+        setContent { LeafApp(BookStore(this)) }
     }
-    private fun toggleBars() {
-        readerBarsVisible = !readerBarsVisible
-        headerView?.visibility = if(readerBarsVisible) View.VISIBLE else View.GONE
-        footerView?.visibility = if(readerBarsVisible) View.VISIBLE else View.GONE
-        sideButtons?.visibility = if(settings.getBoolean("sideButtons",true)) View.VISIBLE else View.GONE
-    }
-    private fun markFinished(book: JSONObject) {
-        book.put("status", "Bitirilib")
-        book.put("progress", 100)
-        if(book.optString("completedAt").isEmpty()) book.put("completedAt",
-            java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.US).format(java.util.Date()))
-    }
-    private fun scrollFraction(view: View, maxScroll: Int): Double =
-        if (maxScroll <= 0) 0.0 else (view.scrollY.toDouble() / maxScroll).coerceIn(0.0, 1.0)
+}
 
-    private fun recordPosition(fraction: Double, immediate: Boolean = false) {
-        val book = current ?: return
-        if (restoringPosition) return
-        val clamped = fraction.coerceIn(0.0, 1.0)
-        book.put("page", page)
-        book.put("scrollFraction", clamped)
-        val raw = if(book.optString("type")=="epub" && epubChapters.isNotEmpty()) {
-            // Approximate text progress by chapter XHTML size rather than treating
-            // a 2-paragraph chapter and a 100-page chapter equally.
-            val lengths=epubChapters.map {it.length().coerceAtLeast(1L)}
-            val totalBytes=lengths.sum().toDouble().coerceAtLeast(1.0)
-            val before=lengths.take(page).sum().toDouble()
-            ((before + lengths[page.coerceIn(0,lengths.lastIndex)]*clamped) / totalBytes*100.0)
-                .roundToInt()
-        } else ((page + clamped) / total * 100.0).roundToInt()
-        val progress = if (book.optString("status") == "Bitirilib") 100 else raw.coerceIn(0, 99)
-        book.put("progress", progress)
-        if (book.optString("status") == "Oxunmayıb") book.put("status", "Oxunur")
-        updateReaderProgress()
-        pendingSave?.let { saveHandler.removeCallbacks(it) }
-        val task = Runnable { save(); pendingSave = null }
-        if (immediate) task.run() else { pendingSave = task; saveHandler.postDelayed(task, 350) }
+@Composable
+private fun LeafApp(store:BookStore) {
+    val context=LocalContext.current
+    var books by remember {mutableStateOf(store.books())}
+    var selected by remember {mutableStateOf<ReaderBook?>(null)}
+    var search by remember {mutableStateOf("")}
+    var filter by remember {mutableStateOf("Hamısı")}
+    var menuBook by remember {mutableStateOf<ReaderBook?>(null)}
+    val filePicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri->
+        if(uri!=null) try {
+            store.import(uri)
+            books=store.books()
+        }catch(e:Exception){Toast.makeText(context,e.message ?: "Fayl açılmadı",Toast.LENGTH_LONG).show()}
     }
-
-    private fun updateReaderProgress() {
-        val book=current ?:return
-        val progress=book.optInt("progress",0)
-        controls?.text=if(book.optString("type")=="epub" && pagedEpub())
-            "Fəsil ${page+1}/$total · ${epubPageIndex+1}/$epubPageCount · $progress%"
-            else "${page+1}/$total · $progress%"
-    }
-    private fun flushPosition() {
-        pendingSave?.let { saveHandler.removeCallbacks(it); pendingSave = null }
-        save()
-    }
-
-    private fun restoreFraction(view: View, maxScroll: () -> Int, fraction: Double) {
-        restoringPosition = true
-        intArrayOf(60, 250, 600).forEachIndexed { idx, delay ->
-            view.postDelayed({
-                if (activeReaderView !== view) return@postDelayed
-                view.scrollTo(0, (maxScroll().coerceAtLeast(0) * fraction.coerceIn(0.0, 1.0)).roundToInt())
-                if (idx == 2) {
-                    restoringPosition = false
-                    recordPosition(scrollFraction(view, maxScroll()), true)
-                }
-            }, delay.toLong())
-        }
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); load(); shelf() }
-    private fun load() {
-        books.clear()
-        val arr = JSONArray(prefs.getString("items", "[]"))
-        for (i in 0 until arr.length()) books.add(arr.getJSONObject(i))
-    }
-    private fun save() {
-        val arr = JSONArray()
-        books.forEach { arr.put(it) }
-        prefs.edit().putString("items", arr.toString()).apply()
-    }
-    private fun bar(title: String, back: Boolean = false) {
-        root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(bg())
-            // Android 15 enforces edge-to-edge for targetSdk 35. Keep app navigation
-            // above the system gesture/navigation area; reader stays immersive.
-            if (Build.VERSION.SDK_INT >= 35) {
-                setOnApplyWindowInsetsListener { view, insets ->
-                    val safe = insets.getInsets(WindowInsets.Type.systemBars())
-                    view.setPadding(safe.left, safe.top, safe.right, safe.bottom)
-                    insets
-                }
-            }
-        }
-        setContentView(root)
-        if (Build.VERSION.SDK_INT >= 35) root.requestApplyInsets()
-        val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(18,20,18,20); setBackgroundColor(teal) }
-        if(back) head.addView(action("‹") { closeReader(); shelf() })
-        head.addView(TextView(this).apply {
-            text = title; textSize = 22f; setTextColor(Color.WHITE); setTypeface(null,1)
-            layoutParams = LinearLayout.LayoutParams(0,-2,1f)
-        })
-        root.addView(head)
-        headerView=head
-    }
-    private fun action(s: String, onClick: () -> Unit): TextView = TextView(this).apply {
-        text=s; textSize=17f; setTextColor(teal); setPadding(14,12,14,12); setOnClickListener { onClick() }
-    }
-    private fun isDark(): Boolean = settings.getString("theme","Light") in listOf("Dark","AMOLED")
-    private fun bg():Int = when(settings.getString("theme","Light")) {
-        "Dark" -> Color.rgb(24,28,35)
-        "AMOLED" -> Color.BLACK
-        "Sepia" -> Color.rgb(242,231,210)
-        else -> Color.rgb(248,250,249)
-    }
-    private fun fg():Int = if(isDark()) Color.WHITE else Color.rgb(32,49,49)
-    private fun panel():Int = if(isDark()) Color.rgb(42,48,56) else Color.WHITE
-    private fun dp(value:Int) = (value*resources.displayMetrics.density).toInt()
-    private fun addNav(active:String) {
-        val nav=LinearLayout(this).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER;setPadding(dp(6),dp(5),dp(6),dp(5));setBackgroundColor(panel()) }
-        val entries=listOf("Kitabxana","Statistika","Ayarlar")
-        entries.forEach { label ->
-            val item=TextView(this).apply {
-                text=if(active==label)"● "+label else label
-                textSize=13f;gravity=Gravity.CENTER;setTextColor(if(active==label)teal else fg())
-                setPadding(dp(4),dp(12),dp(4),dp(12))
-                setOnClickListener { when(label) {
-                    "Kitabxana" -> shelf()
-                    "Statistika" -> statistics()
-                    else -> settingsScreen()
-                }}
-            }
-            nav.addView(item,LinearLayout.LayoutParams(0,-2,1f))
-        }
-        root.addView(nav)
-    }
-    private fun shelf() {
-        closeReader()
-        setFullScreen(false)
-        bar("Leaf Reader")
-        val addButton=action("＋ Kitab əlavə et") {
-            val intent=Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE);type="*/*"
-                putExtra(Intent.EXTRA_MIME_TYPES,arrayOf("application/pdf","application/epub+zip","application/zip","application/x-cbz","application/octet-stream"))
-            }
-            startActivityForResult(intent,42)
-        }
-        root.addView(addButton)
-        val search=EditText(this).apply {
-            hint="Kitab axtar..."
-            textSize=15f;setSingleLine(true);setTextColor(fg())
-            setHintTextColor(Color.GRAY);setBackgroundColor(panel())
-            setPadding(dp(14),dp(10),dp(14),dp(10))
-        }
-        root.addView(search,LinearLayout.LayoutParams(-1,-2).apply { setMargins(dp(12),0,dp(12),dp(8)) })
-        val filters=Spinner(this)
-        val opts=listOf("Hamısı","Oxunur","Oxunmayıb","Bitirilib","Yarımçıq saxlanılıb")
-        filters.adapter=ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,opts)
-        root.addView(filters)
-        val scroll=ScrollView(this)
-        val list=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(dp(12),dp(8),dp(12),dp(20)) }
-        scroll.addView(list)
-        root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
-        fun render() {
-            list.removeAllViews()
-            val filter=opts[filters.selectedItemPosition.coerceAtLeast(0)]
-            val visible=books.asReversed().filter {
-                it.optString("title").contains(search.text.toString(),ignoreCase=true) &&
-                    (filter=="Hamısı" || it.optString("status","Oxunmayıb")==filter)
-            }
-            if(visible.isEmpty()) list.addView(TextView(this).apply {
-                text="Uyğun kitab tapılmadı";textSize=17f;setTextColor(fg());setPadding(dp(8),dp(28),dp(8),dp(28))
-            })
-            visible.forEach { b ->
-                val card=LinearLayout(this).apply {
-                    orientation=LinearLayout.HORIZONTAL;setPadding(dp(12),dp(12),dp(12),dp(12))
-                    setBackgroundColor(panel());elevation=dp(2).toFloat()
-                }
-                val cover=TextView(this).apply {
-                    text="▤";textSize=42f;gravity=Gravity.CENTER
-                    setTextColor(Color.WHITE);setBackgroundColor(teal)
-                }
-                val coverPath=b.optString("cover")
-                val coverFile=File(filesDir,coverPath)
-                if(coverPath.isNotBlank() && coverFile.exists()) {
-                    val bitmap=BitmapFactory.decodeFile(coverFile.absolutePath)
-                    val coverImage=ImageView(this).apply {
-                        setImageBitmap(bitmap);scaleType=ImageView.ScaleType.CENTER_CROP
+    MaterialTheme(colorScheme=lightColorScheme(
+        primary=Accent,secondary=Ink,background=Cream,surface=Color.White,
+        onBackground=Ink,onSurface=Ink
+    ),shapes=Shapes(medium=RoundedCornerShape(16.dp),large=RoundedCornerShape(24.dp))) {
+        if(selected==null) {
+            Scaffold(
+                contentWindowInsets=WindowInsets.safeDrawing,
+                containerColor=Cream,
+                topBar={
+                    Column(Modifier.fillMaxWidth().padding(start=22.dp,end=22.dp,top=20.dp,bottom=8.dp)) {
+                        Text("Leaf Reader",fontSize=30.sp,fontWeight=FontWeight.Bold,color=Ink)
+                        Text("Sənin şəxsi kitabxanan",fontSize=14.sp,color=Gray)
                     }
-                    card.addView(coverImage,LinearLayout.LayoutParams(dp(68),dp(94)))
-                } else card.addView(cover,LinearLayout.LayoutParams(dp(68),dp(94)))
-                val detail=LinearLayout(this).apply {
-                    orientation=LinearLayout.VERTICAL;setPadding(dp(14),0,dp(4),0)
+                },
+                floatingActionButton={
+                    ExtendedFloatingActionButton(onClick={
+                        filePicker.launch(arrayOf("application/pdf","application/epub+zip","application/zip","application/octet-stream"))
+                    },icon={Icon(Icons.Default.Add,null)},text={Text("Kitab əlavə et")})
                 }
-                val title=TextView(this).apply {
-                    text=b.optString("title");textSize=16f;setTypeface(null,1)
-                    setTextColor(fg());maxLines=2
-                }
-                detail.addView(title)
-                detail.addView(TextView(this).apply {
-                    val date=b.optString("completedAt")
-                    text=b.optString("status","Oxunmayıb") + " · " + b.optInt("progress",0).toString() + "%" +
-                        if(date.isNotBlank()) " · ✓ "+date else ""
-                    textSize=12f;setTextColor(teal);setPadding(0,dp(6),0,dp(8))
-                })
-                detail.addView(ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
-                    max=100;progress=b.optInt("progress",0)
-                })
-                card.addView(detail,LinearLayout.LayoutParams(0,-2,1f))
-                card.addView(action("⋮") { options(b) })
-                card.setOnClickListener { openBook(b) }
-                list.addView(card,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=dp(12) })
-            }
-        }
-        search.addTextChangedListener(object:android.text.TextWatcher {
-            override fun beforeTextChanged(s:CharSequence?,start:Int,count:Int,after:Int){}
-            override fun onTextChanged(s:CharSequence?,start:Int,before:Int,count:Int){render()}
-            override fun afterTextChanged(s:android.text.Editable?){}
-        })
-        filters.onItemSelectedListener=object:android.widget.AdapterView.OnItemSelectedListener {
-            override fun onNothingSelected(parent:android.widget.AdapterView<*>?){}
-            override fun onItemSelected(parent:android.widget.AdapterView<*>?,view:View?,position:Int,id:Long){render()}
-        }
-        render()
-        addNav("Kitabxana")
-    }
-    private fun statistics() {
-        closeReader();setFullScreen(false);bar("Statistika")
-        val completedBooks=books.filter { it.optString("status")=="Bitirilib" }
-        val scroll=ScrollView(this)
-        val content=LinearLayout(this).apply {
-            orientation=LinearLayout.VERTICAL;setPadding(dp(20),dp(14),dp(20),dp(20))
-        }
-        scroll.addView(content);root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
-        listOf("Ümumi kitab sayı" to books.size.toString(),
-            "Bitirilmiş kitablar" to completedBooks.size.toString(),
-            "Hazırda oxunur" to books.count { it.optString("status")=="Oxunur" }.toString(),
-            "Bitirilmiş PDF/CBZ səhifələri" to completedBooks.sumOf {it.optInt("pages",0)}.toString(),
-            "Oxuma müddəti (dəqiqə)" to (books.sumOf {it.optLong("readingMs",0L)}/60000L).toString()).forEach { (label,value) ->
-            val card=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(14),dp(16),dp(14));setBackgroundColor(panel()) }
-            card.addView(TextView(this).apply {text=label;textSize=13f;setTextColor(fg())})
-            card.addView(TextView(this).apply {text=value;textSize=28f;setTextColor(teal);setTypeface(null,1)})
-            content.addView(card,LinearLayout.LayoutParams(-1,-2).apply {bottomMargin=dp(10)})
-        }
-        val goal=settings.getInt("annualGoal",24)
-        val currentYear=java.text.SimpleDateFormat("yyyy",java.util.Locale.US).format(java.util.Date())
-        val yearDone=completedBooks.count {it.optString("completedAt").startsWith(currentYear)}
-        content.addView(TextView(this).apply {
-            text="İllik hədəf: "+yearDone+" / "+goal+" kitab"
-            textSize=18f;setTextColor(fg());setPadding(0,dp(10),0,dp(10))
-        })
-        content.addView(ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {max=goal;progress=yearDone.coerceAtMost(goal)})
-        content.addView(TextView(this).apply {text="Aylıq bitirilən kitablar";textSize=20f;setTextColor(fg());setPadding(0,dp(18),0,dp(12))})
-        val months=completedBooks.filter {it.optString("completedAt").length>=7}
-            .groupBy {it.optString("completedAt").substring(0,7)}.toSortedMap()
-        if(months.isEmpty())content.addView(TextView(this).apply {text="Hələ tarixçə yoxdur";setTextColor(fg())})
-        months.forEach { (month,entries) ->
-            content.addView(TextView(this).apply {text=month+"  ·  "+entries.size+" kitab";textSize=16f;setTextColor(fg());setPadding(0,dp(8),0,dp(5))})
-            content.addView(ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {max=books.size.coerceAtLeast(1);progress=entries.size})
-        }
-        addNav("Statistika")
-    }
-    private fun settingsScreen() {
-        closeReader();setFullScreen(false);bar("Ayarlar")
-        val content=LinearLayout(this).apply {orientation=LinearLayout.VERTICAL;setPadding(dp(18),dp(20),dp(18),dp(20))}
-        root.addView(content,LinearLayout.LayoutParams(-1,0,1f))
-        content.addView(TextView(this).apply {text="Oxu teması";textSize=19f;setTextColor(fg())})
-        val themes=listOf("Light","Dark","Sepia","AMOLED")
-        val spinner=Spinner(this).apply {adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,themes);setSelection(themes.indexOf(settings.getString("theme","Light")))}
-        content.addView(spinner)
-        content.addView(action("Temanı tətbiq et") {settings.edit().putString("theme",themes[spinner.selectedItemPosition]).apply();settingsScreen()})
-        content.addView(TextView(this).apply {text="EPUB şrift ölçüsü";textSize=18f;setTextColor(fg());setPadding(0,dp(14),0,dp(8))})
-        val fontSlider=SeekBar(this).apply {
-            max=18;progress=(settings.getInt("fontSize",18)-14).coerceIn(0,18)
-            setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(bar:SeekBar?,progress:Int,fromUser:Boolean) {
-                    if(fromUser)settings.edit().putInt("fontSize",progress+14).apply()
-                }
-                override fun onStartTrackingTouch(bar:SeekBar?) {}
-                override fun onStopTrackingTouch(bar:SeekBar?) {}
-            })
-        }
-        content.addView(fontSlider)
-        content.addView(CheckBox(this).apply {
-            text="PDF/CBZ: Fit to Width";setTextColor(fg())
-            isChecked=settings.getBoolean("fitWidth",false)
-            setOnCheckedChangeListener {_,value->settings.edit().putBoolean("fitWidth",value).apply()}
-        })
-        content.addView(TextView(this).apply {text="İllik kitab hədəfi";textSize=18f;setTextColor(fg());setPadding(0,dp(18),0,0)})
-        val goal=EditText(this).apply {
-            inputType=android.text.InputType.TYPE_CLASS_NUMBER
-            setText(settings.getInt("annualGoal",24).toString());setTextColor(fg())
-        }
-        content.addView(goal)
-        content.addView(action("Hədəfi saxla") {
-            settings.edit().putInt("annualGoal",goal.text.toString().toIntOrNull()?.coerceIn(1,999) ?:24).apply()
-            Toast.makeText(this,"Hədəf saxlanıldı",Toast.LENGTH_SHORT).show()
-        })
-        content.addView(CheckBox(this).apply {
-            text="CBZ: Sağdan-sola səhifə çevirmə"
-            setTextColor(fg());isChecked=settings.getBoolean("cbzRtl",false)
-            setOnCheckedChangeListener {_,checked->settings.edit().putBoolean("cbzRtl",checked).apply()}
-        })
-        content.addView(action("JSON məlumatları export et") {jsonExport()})
-        content.addView(action("JSON məlumatları import et") {jsonImport()})
-        addNav("Ayarlar")
-    }
-    private fun jsonExport() {
-        startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE);type="application/json"
-            putExtra(Intent.EXTRA_TITLE,"leaf-reader-backup.json")
-        },81)
-    }
-    private fun jsonImport() {
-        startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE);type="application/json"
-        },82)
-    }
-    private fun options(b: JSONObject) {
-        val choices=arrayOf("Oxunmayıb","Oxunur","Bitirilib","Yarımçıq saxlanılıb","Şəxsi qeyd","Oxuma tarixçəsi","Sil")
-        AlertDialog.Builder(this).setTitle(b.optString("title")).setItems(choices) { _,n ->
-            if(n==6) AlertDialog.Builder(this).setMessage("Kitab və oxu qeydi silinsin?")
-                .setPositiveButton("Sil") { _,_ ->
-                    File(filesDir,b.getString("path")).delete(); books.remove(b); save(); shelf()
-                }.setNegativeButton("Ləğv et",null).show()
-            else if(n==4)editNote(b)
-            else if(n==5)showHistory(b)
-            else { if(n==2)markFinished(b) else b.put("status",choices[n]);save();shelf() }
-        }.show()
-    }
-    private fun showHistory(book:JSONObject) {
-        val history=book.optJSONArray("readingHistory") ?: JSONArray()
-        val items=(0 until history.length()).map { index ->
-            val entry=history.optJSONObject(index)
-            (entry?.optString("date") ?: "")+"  ·  səhifə "+((entry?.optInt("page") ?: 0)+1)
-        }.takeLast(30).reversed().toTypedArray()
-        AlertDialog.Builder(this).setTitle("Oxuma tarixçəsi")
-            .setItems(if(items.isEmpty())arrayOf("Hələ tarixçə yoxdur") else items) {_,_->}
-            .setPositiveButton("Bağla",null).show()
-    }
-    private fun editNote(book:JSONObject) {
-        val editor=EditText(this).apply {
-            minLines=4;setText(book.optString("note"));hint="Bu kitab haqqında qeydlərin"
-        }
-        AlertDialog.Builder(this).setTitle("Şəxsi qeyd")
-            .setView(editor)
-            .setPositiveButton("Saxla") {_,_->
-                book.put("note",editor.text.toString());save()
-            }.setNegativeButton("Ləğv et",null).show()
-    }
-    override fun onActivityResult(requestCode:Int,resultCode:Int,data:Intent?) {
-        super.onActivityResult(requestCode,resultCode,data)
-        if(resultCode!=RESULT_OK)return
-        if(requestCode==81) {
-            data?.data?.let { uri ->
-                try {
-                    contentResolver.openOutputStream(uri)?.use { stream ->
-                        val arr=JSONArray()
-                        books.forEach {arr.put(it)}
-                        stream.write(JSONObject().put("schemaVersion",2).put("books",arr).toString(2).toByteArray(Charsets.UTF_8))
-                    }
-                    Toast.makeText(this,"JSON backup yaradıldı",Toast.LENGTH_LONG).show()
-                }catch(e:Exception){Toast.makeText(this,e.message,Toast.LENGTH_LONG).show()}
-            }
-            return
-        }
-        if(requestCode==82) {
-            data?.data?.let { uri ->
-                try {
-                    val json=contentResolver.openInputStream(uri)!!.bufferedReader().use {it.readText()}
-                    val arr=JSONObject(json).getJSONArray("books")
-                    val known=books.map {it.optString("path")}.toMutableSet()
-                    for(i in 0 until arr.length()) {
-                        val book=arr.getJSONObject(i)
-                        val id=book.optString("path")
-                        if(id !in known && File(filesDir,id).exists()) {
-                            books.add(book);known.add(id)
+            ){ inner->
+                Column(Modifier.fillMaxSize().padding(inner).padding(horizontal=18.dp)) {
+                    OutlinedTextField(
+                        search,{search=it},modifier=Modifier.fillMaxWidth(),
+                        singleLine=true,shape=RoundedCornerShape(18.dp),
+                        placeholder={Text("Kitab axtar...")},
+                        leadingIcon={Icon(Icons.Default.Search,null)}
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement=Arrangement.spacedBy(7.dp),
+                        modifier=Modifier.horizontalScroll(rememberScrollState())) {
+                        listOf("Hamısı","Oxunur","Oxunmayıb","Bitirilib").forEach { label->
+                            FilterChip(selected=filter==label,onClick={filter=label},label={Text(label)})
                         }
                     }
-                    save();shelf()
-                    Toast.makeText(this,"Qeydlər import edildi. Fayl özü ayrıca tələb olunur.",Toast.LENGTH_LONG).show()
-                }catch(e:Exception){Toast.makeText(this,"JSON xətası: "+e.message,Toast.LENGTH_LONG).show()}
-            }
-            return
-        }
-        if(requestCode!=42)return
-        val uri=data?.data ?: return
-        val title=contentResolver.query(uri,null,null,null,null)?.use { c ->
-            if(c.moveToFirst()) {
-                val col=c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if(col>=0)c.getString(col) else null
-            } else null
-        } ?: "Book"
-        val ext=title.substringAfterLast('.').lowercase()
-        if(ext !in listOf("epub","pdf","cbz")) {
-            Toast.makeText(this,"Yalnız EPUB, PDF və CBZ dəstəklənir",Toast.LENGTH_LONG).show(); return
-        }
-        try {
-            val id="book_${System.currentTimeMillis()}.$ext"
-            contentResolver.openInputStream(uri)!!.use { input ->
-                FileOutputStream(File(filesDir,id)).use { input.copyTo(it) }
-            }
-            val item=JSONObject().put("title",title).put("path",id).put("type",ext)
-                .put("page",0).put("scrollFraction",0.0).put("progress",0).put("status","Oxunmayıb")
-            CoverExtractor.extract(this,File(filesDir,id),ext,id)?.let {item.put("cover",it)}
-            books.add(item)
-            save(); shelf()
-        } catch(e:Exception) { Toast.makeText(this,"İdxal xətası: ${e.message}",Toast.LENGTH_LONG).show() }
-    }
-    private fun openBook(b:JSONObject) {
-        try {
-            current=b; page=b.optInt("page",0)
-            readingSince=android.os.SystemClock.elapsedRealtime()
-            if(b.optString("startedAt").isEmpty()) b.put("startedAt",
-                java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.US).format(java.util.Date()))
-            b.put("lastOpenedAt",java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss",java.util.Locale.US).format(java.util.Date()))
-            val history=b.optJSONArray("readingHistory") ?: JSONArray()
-            history.put(JSONObject().put("date",b.optString("lastOpenedAt")).put("page",page))
-            b.put("readingHistory",history)
-            when(b.getString("type")) {
-                "pdf" -> {
-                    pdfDescriptor=ParcelFileDescriptor.open(File(filesDir,b.getString("path")),ParcelFileDescriptor.MODE_READ_ONLY)
-                    pdf=android.graphics.pdf.PdfRenderer(pdfDescriptor!!); total=pdf!!.pageCount
-                }
-                "cbz" -> {
-                    zip=ZipFile(File(filesDir,b.getString("path")))
-                    imageEntries=zip!!.entries().asSequence().filter {
-                        !it.isDirectory && it.name.substringAfterLast('.').lowercase() in listOf("png","jpg","jpeg","webp")
-                    }.map { it.name }.sortedWith(compareBy { it.lowercase() }).toList()
-                    total=imageEntries.size
-                }
-                "epub" -> {
-                    epubChapters=extractEpub(File(filesDir,b.getString("path")),b.getString("path").substringBefore('.'))
-                    total=epubChapters.size
-                }
-            }
-            if(total==0) throw IllegalArgumentException("Oxuna bilən səhifə yoxdur")
-            page=page.coerceIn(0,total-1)
-            b.put("pages",if(b.optString("type")=="epub")0 else total)
-            if(b.optString("status")!="Bitirilib")b.put("status","Oxunur")
-            bar(b.getString("title"),true)
-            setFullScreen(true)
-            (headerView as? LinearLayout)?.addView(action("Aa ⚙") { readerOptions() })
-            readerContainer=FrameLayout(this); root.addView(readerContainer,LinearLayout.LayoutParams(-1,0,1f))
-            val foot=LinearLayout(this).apply {
-                orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL; setPadding(8,4,8,8)
-            }
-            foot.addView(action("◀") { readerTurn(-1) })
-            foot.addView(action("☆") { bookmark() })
-            controls=TextView(this).apply {
-                gravity=Gravity.CENTER; setTextColor(Color.DKGRAY)
-                layoutParams=LinearLayout.LayoutParams(0,-2,1f)
-            }
-            foot.addView(controls)
-            foot.addView(action("☷") { bookmarkList() })
-            foot.addView(action("≡") { chaptersDialog() })
-            foot.addView(action("⇥") { jumpDialog() })
-            foot.addView(action("▶") { readerTurn(1) }); root.addView(foot)
-            footerView=foot
-            readerBarsVisible=true
-            drawPage()
-            toggleBars()
-        } catch(e:Exception) {
-            Toast.makeText(this,"Açılmadı: ${e.message}",Toast.LENGTH_LONG).show(); closeReader(); shelf()
-        }
-    }
-    private fun attachSideButtons() {
-        val host=readerContainer ?:return
-        val overlay=LinearLayout(this).apply {
-            orientation=LinearLayout.HORIZONTAL
-            gravity=Gravity.CENTER_VERTICAL
-        }
-        fun edge(label:String,dir:Int)=TextView(this).apply {
-            text=label;textSize=24f;gravity=Gravity.CENTER
-            setTextColor(Color.WHITE)
-            setBackgroundColor(Color.argb(155,26,63,66))
-            setOnClickListener { readerTurn(dir) }
-        }
-        overlay.addView(edge("‹",-1),LinearLayout.LayoutParams(dp(42),dp(72)))
-        overlay.addView(View(this),LinearLayout.LayoutParams(0,1,1f))
-        overlay.addView(edge("›",1),LinearLayout.LayoutParams(dp(42),dp(72)))
-        host.addView(overlay,FrameLayout.LayoutParams(-1,-2,Gravity.CENTER_VERTICAL))
-        sideButtons=overlay
-        overlay.visibility=if(settings.getBoolean("sideButtons",true))View.VISIBLE else View.GONE
-    }
-    private fun readerTurn(direction:Int) {
-        if(current?.optString("type")=="epub") {
-            web?.let { view ->
-                if(!epubReady)return
-                if(pagedEpub()) {
-                    val max=epubMaxX(view)
-                    val step=view.width.coerceAtLeast(1)
-                    val currentPage=(view.scrollX.toFloat()/step).roundToInt()
-                    if(direction>0 && currentPage<epubPageCount-1) {
-                        val target=((currentPage+1)*step).coerceAtMost(max)
-                        view.scrollTo(target,0)
-                        onEpubScrolled(view)
-                        return
+                    Spacer(Modifier.height(12.dp))
+                    val visible=books.filter {
+                        (filter=="Hamısı" || it.status==filter) && it.title.contains(search,true)
                     }
-                    if(direction<0 && currentPage>0) {
-                        view.scrollTo(((currentPage-1)*step).coerceAtLeast(0),0)
-                        onEpubScrolled(view)
-                        return
-                    }
-                } else {
-                    val max=(view.contentHeight*view.scale-view.height).toInt().coerceAtLeast(0)
-                    val step=(view.height*0.87f).toInt().coerceAtLeast(1)
-                    if(direction>0 && view.scrollY<max-8) {
-                        view.scrollTo(0,(view.scrollY+step).coerceAtMost(max))
-                        return
-                    }
-                    if(direction<0 && view.scrollY>8) {
-                        view.scrollTo(0,(view.scrollY-step).coerceAtLeast(0))
-                        return
-                    }
-                }
-            }
-        }
-        val rtl=current?.optString("type")=="cbz" && settings.getBoolean("cbzRtl",false)
-        navigate(if(rtl)-direction else direction)
-    }
-    private fun epubMaxX(view:WebView):Int =
-        if(view is EpubChapterView) view.maxHorizontalScroll() else 0
-    private fun onEpubScrolled(view:WebView) {
-        if(!pagedEpub())return
-        val step=view.width.coerceAtLeast(1)
-        epubPageCount=max(1,(epubMaxX(view)+step-1)/step+1)
-        epubPageIndex=(view.scrollX.toFloat()/step).roundToInt().coerceIn(0,epubPageCount-1)
-        val fraction=if(epubPageCount<=1)0.0
-            else epubPageIndex.toDouble()/(epubPageCount-1)
-        recordPosition(fraction)
-        updateReaderProgress()
-    }
-    private fun readerOptions() {
-        val book=current ?:return
-        val content=LinearLayout(this).apply {
-            orientation=LinearLayout.VERTICAL
-            setPadding(dp(18),dp(8),dp(18),dp(8))
-        }
-        val themeChoices=listOf("Light","Dark","Sepia","AMOLED")
-        content.addView(TextView(this).apply {text="Oxuma teması";textSize=17f})
-        val picker=Spinner(this).apply {
-            adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,themeChoices)
-            setSelection(themeChoices.indexOf(settings.getString("theme","Light")).coerceAtLeast(0))
-        }
-        content.addView(picker)
-        var fontValue=settings.getInt("fontSize",18)
-        var lineValue=settings.getInt("lineSpacing",160)
-        if(book.optString("type")=="epub") {
-            val fontLabel=TextView(this).apply {text="Şrift ölçüsü: $fontValue px";setPadding(0,dp(12),0,0)}
-            content.addView(fontLabel)
-            content.addView(SeekBar(this).apply {
-                max=22;progress=(fontValue-12).coerceIn(0,22)
-                setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(bar:SeekBar?,progress:Int,fromUser:Boolean) {
-                        fontValue=12+progress;fontLabel.text="Şrift ölçüsü: $fontValue px"
-                    }
-                    override fun onStartTrackingTouch(bar:SeekBar?) {}
-                    override fun onStopTrackingTouch(bar:SeekBar?) {}
-                })
-            })
-            val lineLabel=TextView(this).apply {text="Sətirarası məsafə: $lineValue%";setPadding(0,dp(12),0,0)}
-            content.addView(lineLabel)
-            content.addView(SeekBar(this).apply {
-                max=100;progress=(lineValue-110).coerceIn(0,100)
-                setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(bar:SeekBar?,progress:Int,fromUser:Boolean) {
-                        lineValue=110+progress;lineLabel.text="Sətirarası məsafə: $lineValue%"
-                    }
-                    override fun onStartTrackingTouch(bar:SeekBar?) {}
-                    override fun onStopTrackingTouch(bar:SeekBar?) {}
-                })
-            })
-        }
-        val arrows=CheckBox(this).apply {
-            text="Ekranın sağ və solunda vərəqləmə düymələri"
-            isChecked=settings.getBoolean("sideButtons",true)
-        }
-        content.addView(arrows)
-        val modeLabel=TextView(this).apply {text="EPUB oxuma rejimi";setPadding(0,dp(10),0,0)}
-        modeLabel.visibility=if(book.optString("type")=="epub")View.VISIBLE else View.GONE
-        content.addView(modeLabel)
-        val modeOptions=listOf("Səhifələmə","Continuous scroll")
-        val mode=Spinner(this).apply {
-            adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,modeOptions)
-            setSelection(if(pagedEpub())0 else 1)
-            visibility=if(book.optString("type")=="epub")View.VISIBLE else View.GONE
-        }
-        content.addView(mode)
-        val swipe=CheckBox(this).apply {
-            text="Swipe ilə səhifə çevirmə"
-            isChecked=settings.getBoolean("swipeTurn",false)
-        }
-        content.addView(swipe)
-        val fit=CheckBox(this).apply {
-            text="PDF/CBZ: Fit to Width"
-            isChecked=settings.getBoolean("fitWidth",false)
-            visibility=if(book.optString("type")=="epub")View.GONE else View.VISIBLE
-        }
-        content.addView(fit)
-        val scrollingContent=ScrollView(this).apply {
-            isFillViewport=false
-            addView(content)
-        }
-        val dialog=AlertDialog.Builder(this).setTitle("Oxuyucu ayarları").setView(scrollingContent)
-            .setPositiveButton("Tətbiq et") {_,_->
-                val wasPaged=pagedEpub()
-                settings.edit()
-                    .putString("theme",themeChoices[picker.selectedItemPosition])
-                    .putInt("fontSize",fontValue)
-                    .putInt("lineSpacing",lineValue)
-                    .putBoolean("sideButtons",arrows.isChecked)
-                    .putBoolean("swipeTurn",swipe.isChecked)
-                    .putString("epubMode",if(mode.selectedItemPosition==0)"pages" else "scroll")
-                    .putBoolean("fitWidth",fit.isChecked).apply()
-                if(book.optString("type")=="epub") {
-                    web?.let { view ->
-                        val fraction=if(wasPaged) {
-                            if(epubPageCount<=1)0.0 else epubPageIndex.toDouble()/(epubPageCount-1)
-                        } else {
-                            val max=(view.contentHeight*view.scale-view.height).toInt().coerceAtLeast(0)
-                            scrollFraction(view,max)
-                        }
-                        book.put("scrollFraction",fraction)
-                    }
-                }
-                root.setBackgroundColor(bg())
-                drawPage()
-                sideButtons?.visibility=if(arrows.isChecked)View.VISIBLE else View.GONE
-                if(!readerBarsVisible)toggleBars()
-            }.setNegativeButton("Bağla",null).create()
-        dialog.show()
-    }
-    private fun chaptersDialog() {
-        if(current?.optString("type")!="epub") {
-            Toast.makeText(this,"Fəsillər siyahısı EPUB üçündür",Toast.LENGTH_SHORT).show()
-            return
-        }
-        val chapters=epubChapters.mapIndexed { index,file ->
-            val source=try {file.readText(Charsets.UTF_8).take(16000)}catch(_:Exception){""}
-            val pattern=Regex(
-                """<(?:h1|h2|title)\b[^>]*>(.*?)</(?:h1|h2|title)>""",
-                setOf(RegexOption.IGNORE_CASE,RegexOption.DOT_MATCHES_ALL)
-            )
-            val found=pattern.find(source)?.groupValues?.getOrNull(1)
-                ?.replace(Regex("<[^>]+>"),"")?.trim()
-            val label=if(found.isNullOrBlank())
-                file.nameWithoutExtension.replace('_',' ').take(55)
-            else found.take(55)
-            "${index+1}. $label"
-        }.toTypedArray()
-        AlertDialog.Builder(this).setTitle("Fəsillər").setItems(chapters) {_,which->
-            if(which!=page) {
-                page=which
-                current?.put("page",page)
-                current?.put("scrollFraction",0.0)
-                drawPage()
-            }
-        }.setNegativeButton("Bağla",null).show()
-    }
-    private fun jumpDialog() {
-        val b=current ?:return
-        val progress=if(b.optString("type")=="epub" && pagedEpub())epubPageIndex else page
-        val maximum=if(b.optString("type")=="epub" && pagedEpub())epubPageCount else total
-        val label=TextView(this).apply {
-            text="Mövqe: ${progress+1} / $maximum"
-            textSize=16f;setPadding(dp(18),dp(12),dp(18),dp(8))
-        }
-        val bar=SeekBar(this).apply {max=(maximum-1).coerceAtLeast(0);this.progress=progress}
-        val layout=LinearLayout(this).apply {
-            orientation=LinearLayout.VERTICAL;addView(label);addView(bar)
-            setPadding(dp(12),0,dp(12),dp(10))
-        }
-        bar.setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seek:SeekBar?,progress:Int,fromUser:Boolean) {
-                label.text="Mövqe: ${progress+1} / $maximum"
-            }
-            override fun onStartTrackingTouch(seek:SeekBar?) {}
-            override fun onStopTrackingTouch(seek:SeekBar?) {}
-        })
-        AlertDialog.Builder(this).setTitle("Mövqeyə keç").setView(layout)
-            .setPositiveButton("Keç") {_,_->
-                if(b.optString("type")=="epub" && pagedEpub()) {
-                    web?.let {view->
-                        view.scrollTo((bar.progress*view.width).coerceAtMost(epubMaxX(view)),0)
-                        onEpubScrolled(view);recordPosition(
-                            if(epubPageCount<=1)0.0 else epubPageIndex.toDouble()/(epubPageCount-1),true)
-                    }
-                } else {
-                    page=bar.progress
-                    b.put("scrollFraction",0.0)
-                    drawPage();recordPosition(0.0,true)
-                }
-            }.setNegativeButton("Bağla",null).show()
-    }
-    private fun bookmark() {
-        val b=current ?:return
-        val fraction=if(b.optString("type")=="epub") {
-            if(pagedEpub()) {
-                if(epubPageCount<=1)0.0 else epubPageIndex.toDouble()/(epubPageCount-1)
-            } else {
-                val v=web
-                if(v==null)0.0 else scrollFraction(v,(v.contentHeight*v.scale-v.height).roundToInt())
-            }
-        } else 0.0
-        val marks=b.optJSONArray("bookmarks") ?: JSONArray()
-        val exists=(0 until marks.length()).any {i->
-            val item=marks.opt(i)
-            if(item is JSONObject)
-                item.optInt("chapter")==page && abs(item.optDouble("fraction",0.0)-fraction)<0.02
-            else marks.optInt(i)==page && fraction==0.0
-        }
-        if(!exists) {
-            marks.put(JSONObject().put("chapter",page).put("fraction",fraction))
-            b.put("bookmarks",marks);save()
-        }
-        Toast.makeText(this,if(exists)"Əlfəcin artıq mövcuddur" else "Əlfəcin saxlanıldı",
-            Toast.LENGTH_SHORT).show()
-    }
-    private fun bookmarkList() {
-        val marks=current?.optJSONArray("bookmarks") ?: JSONArray()
-        if(marks.length()==0) {
-            Toast.makeText(this,"Əlfəcin yoxdur",Toast.LENGTH_SHORT).show()
-            return
-        }
-        val items=(0 until marks.length()).map {i->
-            val saved=marks.opt(i)
-            val chapter=if(saved is JSONObject)saved.optInt("chapter",0) else marks.optInt(i)
-            val percent=if(saved is JSONObject)(saved.optDouble("fraction",0.0)*100).roundToInt() else 0
-            "Fəsil ${chapter+1} · $percent%"
-        }.toTypedArray()
-        AlertDialog.Builder(this).setTitle("Əlfəcinlər").setItems(items) {_,selected->
-            val saved=marks.opt(selected)
-            page=if(saved is JSONObject)saved.optInt("chapter",0) else marks.optInt(selected)
-            page=page.coerceIn(0,total-1)
-            val fraction=if(saved is JSONObject)saved.optDouble("fraction",0.0) else 0.0
-            current?.put("page",page)
-            current?.put("scrollFraction",fraction)
-            drawPage()
-        }.setNegativeButton("Bağla",null).show()
-    }
-    private fun navigate(delta:Int) {
-        if (current == null) return
-        if (page + delta in 0 until total) {
-            flushPosition()
-            page += delta
-            current?.put("page", page)
-            current?.put("scrollFraction", if (delta < 0) 1.0 else 0.0)
-            drawPage()
-            recordPosition(0.0,true)
-        } else if (delta > 0 && page == total - 1) {
-            current?.let { markFinished(it) }
-            flushPosition()
-            controls?.text = "${page + 1} / $total   •   100%"
-            Toast.makeText(this, "Bitirildi ✓", Toast.LENGTH_SHORT).show()
-        }
-    }
-    private fun drawPage() {
-        val book = current ?: return
-        activeReaderView = null
-        readerContainer?.removeAllViews()
-        web?.destroy(); web = null
-        readerBitmap?.recycle(); readerBitmap = null
-        restoringPosition = true
-        val fraction = book.optDouble("scrollFraction", 0.0)
-        when (book.optString("type")) {
-            "epub" -> {
-                epubReady=false
-                epubPageCount=1
-                epubPageIndex=0
-                val w=EpubChapterView(this) { view ->
-                    if(activeReaderView === view && !restoringPosition && epubReady) {
-                        if(pagedEpub())onEpubScrolled(view)
-                        else {
-                            val max=(view.contentHeight*view.scale-view.height).roundToInt().coerceAtLeast(0)
-                            recordPosition(scrollFraction(view,max))
-                        }
-                    }
-                }.apply {
-                    settings.javaScriptEnabled=false
-                    settings.allowFileAccess=true
-                    settings.allowFileAccessFromFileURLs=false
-                    settings.allowUniversalAccessFromFileURLs=false
-                    settings.allowContentAccess=false
-                    settings.builtInZoomControls=false
-                    isHorizontalScrollBarEnabled=false
-                    isVerticalScrollBarEnabled=!pagedEpub()
-                    setBackgroundColor(Color.WHITE)
-                }
-                web=w;activeReaderView=w
-                readerContainer?.addView(w)
-                val file=epubChapters[page]
-                w.webViewClient=object:WebViewClient() {
-                    override fun onPageFinished(view:WebView,url:String?) {
-                        if(activeReaderView!==view)return
-                        // Recalculate after fonts and images settle; preserve chapter ratio.
-                        intArrayOf(220,650).forEachIndexed { index,delay ->
-                            view.postDelayed({
-                                if(activeReaderView!==view)return@postDelayed
-                                if(pagedEpub()) {
-                                    val width=view.width.coerceAtLeast(1)
-                                    val max=epubMaxX(view)
-                                    epubPageCount=max(1,(max+width-1)/width+1)
-                                    epubPageIndex=(fraction*(epubPageCount-1)).roundToInt()
-                                        .coerceIn(0,epubPageCount-1)
-                                    view.scrollTo((epubPageIndex*width).coerceAtMost(max),0)
-                                    if(index==1) {
-                                        restoringPosition=false;epubReady=true
-                                        onEpubScrolled(view)
-                                        recordPosition(if(epubPageCount<=1)0.0 else
-                                            epubPageIndex.toDouble()/(epubPageCount-1),true)
-                                    }
-                                } else if(index==1) {
-                                    val maxScroll=(view.contentHeight*view.scale-view.height)
-                                        .roundToInt().coerceAtLeast(0)
-                                    view.scrollTo(0,(fraction*maxScroll).roundToInt())
-                                    restoringPosition=false;epubReady=true
-                                    recordPosition(scrollFraction(view,maxScroll),true)
-                                }
-                                updateReaderProgress()
-                            },delay.toLong())
-                        }
-                    }
-                    override fun shouldOverrideUrlLoading(view:WebView,request:WebResourceRequest):Boolean=true
-                    override fun shouldInterceptRequest(view:WebView,request:WebResourceRequest):WebResourceResponse? {
-                        val scheme=request.url.scheme?.lowercase()
-                        return if(scheme=="http"||scheme=="https")
-                            WebResourceResponse("text/plain","UTF-8",java.io.ByteArrayInputStream(ByteArray(0)))
-                        else super.shouldInterceptRequest(view,request)
-                    }
-                }
-                var touchDownX=0f;var touchDownY=0f
-                w.setOnTouchListener { _,event ->
-                    when(event.actionMasked) {
-                        MotionEvent.ACTION_DOWN -> {touchDownX=event.x;touchDownY=event.y}
-                        MotionEvent.ACTION_UP -> {
-                            val dx=event.x-touchDownX
-                            val dy=event.y-touchDownY
-                            if(settings.getBoolean("swipeTurn",false) &&
-                                abs(dx)>dp(75) && abs(dx)>abs(dy)*1.4f) {
-                                readerTurn(if(dx<0)1 else -1)
-                                return@setOnTouchListener true
+                    if(visible.isEmpty()) {
+                        Box(Modifier.fillMaxSize().padding(bottom=60.dp),contentAlignment=Alignment.Center) {
+                            Column(horizontalAlignment=Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.AutoStories,null,Modifier.size(64.dp),tint=Accent)
+                                Spacer(Modifier.height(16.dp))
+                                Text("Burada hələ kitab yoxdur",fontSize=20.sp,fontWeight=FontWeight.SemiBold)
+                                Spacer(Modifier.height(8.dp))
+                                Text("EPUB, PDF və ya CBZ əlavə et",color=Gray)
                             }
-                            if(abs(dx)<dp(8) && abs(dy)<dp(8))toggleBars()
+                        }
+                    } else LazyColumn(contentPadding=PaddingValues(bottom=96.dp),
+                        verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                        items(visible,key={it.path}) { book->
+                            LibraryCard(book,store,onOpen={selected=book},
+                                onMore={menuBook=book})
                         }
                     }
-                    false
-                }
-                val theme=settings.getString("theme","Light") ?: "Light"
-                val background=when(theme) {
-                    "Dark"->"#171B22";"AMOLED"->"#000000";"Sepia"->"#F2E6CF"
-                    else->"#FFFFFF"
-                }
-                val foreground=if(theme in listOf("Dark","AMOLED"))"#F5F5F5" else "#292F30"
-                val fontSize=settings.getInt("fontSize",18)
-                val lineHeight=settings.getInt("lineSpacing",160)/100.0
-                val columns=if(pagedEpub()) {
-                    "html{height:100%!important;width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;}"+
-                    "body{width:100vw!important;height:100vh!important;column-width:calc(100vw - 36px)!important;"+
-                    "column-gap:36px!important;column-fill:auto!important;overflow:visible!important;}"
-                } else "html{overflow-x:hidden!important;overflow-y:auto!important;}body{width:100%!important;}"
-                val css="<meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0,user-scalable=no\"/>"+
-                    "<style>html{margin:0!important;padding:0!important;}"+
-                    "body{background:"+background+"!important;color:"+foreground+"!important;"+
-                    "font-size:"+fontSize+"px!important;line-height:"+lineHeight+"!important;"+
-                    "margin:0!important;padding:18px!important;box-sizing:border-box!important;}"+
-                    "img,svg{max-width:100%!important;max-height:85vh!important;height:auto!important;}"+
-                    columns+"</style>"
-                val original=file.readText(Charsets.UTF_8)
-                val decorated=if(original.contains("</head>",true))
-                    original.replace("</head>",css+"</head>",ignoreCase=true)
-                else css+original
-                w.setBackgroundColor(Color.parseColor(background))
-                w.loadDataWithBaseURL(file.parentFile!!.toURI().toString(),
-                    decorated,"application/xhtml+xml","UTF-8",null)
-            }
-            else -> {
-                val bitmap = if (book.optString("type") == "pdf") {
-                    val p = pdf!!.openPage(page)
-                    try {
-                        val scale = min(2.5f, 1800f / p.width)
-                        val output = Bitmap.createBitmap((p.width * scale).toInt().coerceAtLeast(1),
-                            (p.height * scale).toInt().coerceAtLeast(1), Bitmap.Config.ARGB_8888)
-                        output.eraseColor(Color.WHITE)
-                        p.render(output, null, null, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                        output
-                    } finally { p.close() }
-                } else {
-                    zip!!.getInputStream(zip!!.getEntry(imageEntries[page])).use { BitmapFactory.decodeStream(it) }
-                        ?: throw IOException("Şəkil oxunmadı")
-                }
-                readerBitmap = bitmap
-                val viewer = ZoomPageView(this,
-                    onNext={if(settings.getBoolean("swipeTurn",false))readerTurn(1)},
-                    onPrevious={if(settings.getBoolean("swipeTurn",false))readerTurn(-1)},
-                    onToggleControls={toggleBars()},
-                    onZoomChanged={ value -> book.put("zoom",value.toDouble());save() })
-                activeReaderView = viewer
-                readerContainer?.addView(viewer,FrameLayout.LayoutParams(-1,-1))
-                viewer.setPage(bitmap,book.optDouble("zoom",1.0).toFloat(),settings.getBoolean("fitWidth",false))
-                restoringPosition = false
-            }
-        }
-        attachSideButtons()
-        book.put("page", page)
-        controls?.text = "${page + 1} / $total   •   ${book.optInt("progress", 0)}%"
-    }
-    private fun closeReader() {
-        if(current==null)return
-        accountReadingTime()
-        flushPosition()
-        setFullScreen(false)
-        headerView=null;footerView=null;sideButtons=null
-        activeReaderView = null
-        web?.destroy(); web = null
-        readerBitmap?.recycle(); readerBitmap = null
-        pdf?.close(); pdf = null
-        pdfDescriptor?.close(); pdfDescriptor = null
-        zip?.close(); zip = null
-        current = null
-    }
-    override fun onPause() {
-        if(current!=null) { accountReadingTime();flushPosition() }
-        super.onPause()
-    }
-    override fun onResume() {
-        super.onResume()
-        if(current!=null && readingSince==0L)readingSince=android.os.SystemClock.elapsedRealtime()
-    }
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() { if(current!=null) { closeReader(); shelf() } else super.onBackPressed() }
-    private fun extractEpub(source:File,id:String): List<File> {
-        val dir=File(cacheDir,"epub_$id")
-        if(dir.exists())dir.deleteRecursively()
-        dir.mkdirs()
-        ZipFile(source).use { archive ->
-            archive.entries().asSequence().forEach { entry ->
-                val output=File(dir,entry.name).canonicalFile
-                if(!output.path.startsWith(dir.canonicalPath+File.separator)) throw IOException("Unsafe EPUB path")
-                if(entry.isDirectory)output.mkdirs()
-                else {
-                    output.parentFile?.mkdirs()
-                    archive.getInputStream(entry).use { input -> output.outputStream().use { input.copyTo(it) } }
                 }
             }
+        } else {
+            val book=selected!!
+            ReaderScreen(book,store,onExit={
+                selected=null
+                books=store.books()
+            })
         }
-        val container=File(dir,"META-INF/container.xml")
-        val containerXml=container.inputStream().use { parseXml(it) }
-        val opfRelative=containerXml.firstOrNull { it.first=="rootfile" }?.second?.get("full-path")
-            ?: throw IOException("EPUB OPF yoxdur")
-        val opf=File(dir,opfRelative).canonicalFile
-        if(!opf.path.startsWith(dir.canonicalPath+File.separator))throw IOException("Unsafe OPF path")
-        val info=opf.inputStream().use { parseXml(it) }
-        val manifest=info.filter { it.first=="item" }
-            .associate { it.second["id"].orEmpty() to it.second["href"].orEmpty() }
-        return info.filter { it.first=="itemref" }.mapNotNull { row ->
-            val href=manifest[row.second["idref"]] ?: return@mapNotNull null
-            val f=File(opf.parentFile,java.net.URLDecoder.decode(href.substringBefore('#'),"UTF-8")).canonicalFile
-            if(f.path.startsWith(dir.canonicalPath+File.separator) && f.exists()
-                && f.extension.lowercase() in listOf("xhtml","html","htm")) f else null
+        menuBook?.let { book->
+            AlertDialog(onDismissRequest={menuBook=null},
+                title={Text(book.title,maxLines=2)},
+                text={
+                    Column {
+                        listOf("Oxunmayıb","Oxunur","Bitirilib","Yarımçıq saxlanılıb").forEach { status->
+                            TextButton(onClick={
+                                store.change(book.path) { row->
+                                    row.put("status",status)
+                                    if(status=="Bitirilib") {
+                                        row.put("progress",100)
+                                        if(row.optString("completedAt").isEmpty())
+                                            row.put("completedAt",java.text.SimpleDateFormat("yyyy-MM-dd",Locale.US)
+                                                .format(java.util.Date()))
+                                    }
+                                }
+                                books=store.books()
+                                menuBook=null
+                            },modifier=Modifier.fillMaxWidth()) {Text(status)}
+                        }
+                    }
+                },
+                confirmButton={TextButton(onClick={menuBook=null}) {Text("Bağla")}}
+            )
         }
     }
-    private fun parseXml(input:InputStream): List<Pair<String,Map<String,String>>> {
-        val parser=Xml.newPullParser()
-        parser.setInput(input,"UTF-8")
-        val result=mutableListOf<Pair<String,Map<String,String>>>()
-        var event=parser.eventType
-        while(event!=XmlPullParser.END_DOCUMENT) {
-            if(event==XmlPullParser.START_TAG) {
-                val attrs=mutableMapOf<String,String>()
-                for(i in 0 until parser.attributeCount)
-                    attrs[parser.getAttributeName(i)]=parser.getAttributeValue(i)
-                result.add(parser.name.substringAfter(':') to attrs)
+}
+
+@Composable
+private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:()->Unit) {
+    val context=LocalContext.current
+    val image=remember(book.cover) {
+        if(book.cover.isNotBlank())BitmapFactory.decodeFile(File(context.filesDir,book.cover).absolutePath)
+        else null
+    }
+    Card(onClick=onOpen,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(20.dp),
+        colors=CardDefaults.cardColors(containerColor=Color.White),
+        elevation=CardDefaults.cardElevation(defaultElevation=1.dp)) {
+        Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically) {
+            Box(Modifier.size(width=78.dp,height=108.dp).clip(RoundedCornerShape(10.dp))
+                .background(Accent),contentAlignment=Alignment.Center) {
+                if(image!=null)Image(image.asImageBitmap(),null,Modifier.fillMaxSize(),
+                    contentScale=ContentScale.Crop)
+                else Icon(Icons.Default.MenuBook,null,Modifier.size(44.dp),tint=Color.White)
             }
-            event=parser.next()
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text(book.title,fontWeight=FontWeight.SemiBold,fontSize=17.sp,
+                    maxLines=2,overflow=TextOverflow.Ellipsis)
+                Text(book.status+"  •  "+book.type.uppercase(),
+                    color=Gray,fontSize=12.sp)
+                LinearProgressIndicator(progress={book.progress/100f},
+                    modifier=Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(8.dp)),
+                    color=Accent,trackColor=Space)
+                Text(book.progress.toString()+"% oxunub",fontSize=12.sp,color=Accent)
+            }
+            IconButton(onClick=onMore) {Icon(Icons.Default.MoreVert,"Kitab ayarları")}
         }
-        return result
+    }
+}
+
+@Composable
+private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
+    val context=LocalContext.current
+    val prefs=remember {store.setting()}
+    var theme by remember {mutableStateOf(prefs.getString("theme","Sepia") ?: "Sepia")}
+    var font by remember {mutableFloatStateOf(prefs.getInt("fontSize",20).toFloat())}
+    var line by remember {mutableFloatStateOf(prefs.getInt("lineSpacing",160).toFloat())}
+    var mode by remember {mutableStateOf(prefs.getString("epubMode","pages") ?: "pages")}
+    var swipe by remember {mutableStateOf(prefs.getBoolean("swipeTurn",true))}
+    var arrows by remember {mutableStateOf(prefs.getBoolean("sideButtons",false))}
+    var chrome by remember {mutableStateOf(false)}
+    var showSettings by remember {mutableStateOf(false)}
+    var showChapters by remember {mutableStateOf(false)}
+    var chapter by remember(book.path) {mutableIntStateOf(book.chapter)}
+    var fraction by remember(book.path) {mutableDoubleStateOf(book.fraction)}
+    var chapterFiles by remember(book.path) {mutableStateOf<List<File>>(emptyList())}
+    var loadError by remember {mutableStateOf<String?>(null)}
+    var pageCount by remember {mutableIntStateOf(1)}
+    var chapterPages by remember {mutableIntStateOf(1)}
+    var positionInChapter by remember {mutableIntStateOf(0)}
+    var webView by remember {mutableStateOf<EpubChapterView?>(null)}
+    val bookFile=remember(book.path){File(context.filesDir,book.path)}
+    val textColor=if(theme=="Dark"||theme=="AMOLED")Color(0xFFF6F2E8) else Color(0xFF352F29)
+    val paper=when(theme) {
+        "Dark"->Color(0xFF1C2229)
+        "AMOLED"->Color.Black
+        "Sepia"->Color(0xFFF3E9D8)
+        else->Color.White
+    }
+    fun saveProgress(value:Double) {
+        fraction=value.coerceIn(0.0,1.0)
+        val progress=if(book.type=="epub"&&chapterFiles.isNotEmpty()) {
+            val sizes=chapterFiles.map {it.length().coerceAtLeast(1).toDouble()}
+            val sum=sizes.sum().coerceAtLeast(1.0)
+            ((sizes.take(chapter).sum()+sizes[chapter.coerceIn(0,sizes.lastIndex)]*fraction)/sum*100).roundToInt()
+        }else ((chapter+fraction)/pageCount.coerceAtLeast(1)*100).roundToInt()
+        store.change(book.path){item->
+            item.put("page",chapter)
+            item.put("scrollFraction",fraction)
+            item.put("progress",progress.coerceIn(0,99))
+            if(item.optString("status")=="Oxunmayıb")item.put("status","Oxunur")
+        }
+    }
+    LaunchedEffect(book.path) {
+        try {
+            if(book.type=="epub")chapterFiles=withContext(Dispatchers.IO){store.extractChapters(book.path)}
+            else pageCount=withContext(Dispatchers.IO){ReaderMedia.count(bookFile,book.type)}
+            chapter=chapter.coerceIn(0,(if(book.type=="epub")chapterFiles.size else pageCount)-1)
+        }catch(e:Exception){loadError=e.message ?: "Kitabı açmaq mümkün olmadı"}
+    }
+    fun turn(dir:Int) {
+        if(book.type=="epub" && mode=="pages") {
+            val view=webView
+            if(view!=null) {
+                val step=view.width.coerceAtLeast(1)
+                val next=(view.scrollX.toFloat()/step).roundToInt()+dir
+                if(next in 0 until chapterPages) {
+                    view.scrollTo(next*step,0)
+                    positionInChapter=next
+                    saveProgress(if(chapterPages<=1)0.0 else next.toDouble()/(chapterPages-1))
+                    return
+                }
+            }
+        } else if(book.type=="epub") {
+            webView?.let {v->
+                val max=(v.contentHeight*v.scale-v.height).toInt().coerceAtLeast(0)
+                val target=v.scrollY+dir*(v.height*0.88f).toInt()
+                if(target in 1 until max) {
+                    v.scrollTo(0,target)
+                    saveProgress(if(max==0)0.0 else target.toDouble()/max)
+                    return
+                }
+            }
+        }
+        val actual=if(book.type=="cbz" && prefs.getBoolean("cbzRtl",false)) -dir else dir
+        val count=if(book.type=="epub")chapterFiles.size else pageCount
+        if(chapter+actual in 0 until count) {
+            chapter+=actual
+            fraction=if(dir<0)0.98 else 0.0
+            saveProgress(fraction)
+        } else if(dir>0) {
+            store.change(book.path){item->
+                item.put("status","Bitirilib");item.put("progress",100)
+                if(item.optString("completedAt").isEmpty())
+                    item.put("completedAt",java.text.SimpleDateFormat("yyyy-MM-dd",Locale.US)
+                        .format(java.util.Date()))
+            }
+            Toast.makeText(context,"Kitab bitirildi ✓",Toast.LENGTH_SHORT).show()
+        }
+    }
+    DisposableEffect(book.path) {
+        onDispose {webView?.destroy()}
+    }
+    Scaffold(contentWindowInsets=WindowInsets.safeDrawing,containerColor=paper) { padding->
+        Box(Modifier.fillMaxSize().padding(padding).background(paper)) {
+            if(loadError!=null) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
+                Text(loadError ?: "",color=textColor,modifier=Modifier.padding(24.dp))
+            } else if(book.type=="epub") {
+                if(chapterFiles.isEmpty()) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
+                    CircularProgressIndicator()
+                } else key(chapter,mode,font,line,theme) {
+                    val pageFile=chapterFiles[chapter]
+                    AndroidView(factory={ctx->
+                        var startX=0f;var startY=0f
+                        val view=EpubChapterView(ctx) {v->
+                            if(mode=="pages") {
+                                val step=v.width.coerceAtLeast(1)
+                                val total=(v.maxHorizontalScroll()/step)+1
+                                chapterPages=total.coerceAtLeast(1)
+                                val index=(v.scrollX.toFloat()/step).roundToInt()
+                                    .coerceIn(0,chapterPages-1)
+                                positionInChapter=index
+                            }
+                        }
+                        view.settings.javaScriptEnabled=false
+                        view.settings.allowFileAccess=true
+                        view.settings.allowFileAccessFromFileURLs=false
+                        view.settings.allowUniversalAccessFromFileURLs=false
+                        view.settings.allowContentAccess=false
+                        view.isVerticalScrollBarEnabled=mode=="scroll"
+                        view.isHorizontalScrollBarEnabled=false
+                        view.setBackgroundColor(AndroidColor.TRANSPARENT)
+                        view.setOnTouchListener {_,event->
+                            when(event.actionMasked) {
+                                MotionEvent.ACTION_DOWN->{startX=event.x;startY=event.y}
+                                MotionEvent.ACTION_UP->{
+                                    val dx=event.x-startX;val dy=event.y-startY
+                                    if(abs(dx)<18&&abs(dy)<18) {
+                                        chrome=!chrome
+                                    }else if(swipe && abs(dx)>80&&abs(dx)>abs(dy)*1.4) {
+                                        turn(if(dx<0)1 else -1)
+                                        return@setOnTouchListener true
+                                    }
+                                }
+                            }
+                            false
+                        }
+                        view.webViewClient=object:WebViewClient() {
+                            override fun onPageFinished(v:WebView,url:String?) {
+                                v.postDelayed({
+                                    val width=v.width.coerceAtLeast(1)
+                                    if(mode=="pages") {
+                                        chapterPages=(view.maxHorizontalScroll()/width+1).coerceAtLeast(1)
+                                        positionInChapter=(fraction*(chapterPages-1)).roundToInt()
+                                        v.scrollTo(positionInChapter*width,0)
+                                    } else {
+                                        val max=(v.contentHeight*v.scale-v.height).toInt().coerceAtLeast(0)
+                                        v.scrollTo(0,(fraction*max).roundToInt())
+                                    }
+                                },350)
+                            }
+                            override fun shouldOverrideUrlLoading(view:WebView,request:WebResourceRequest)=true
+                            override fun shouldInterceptRequest(view:WebView,request:WebResourceRequest):WebResourceResponse? {
+                                return if(request.url.scheme in listOf("http","https"))
+                                    WebResourceResponse("text/plain","UTF-8",java.io.ByteArrayInputStream(ByteArray(0)))
+                                else super.shouldInterceptRequest(view,request)
+                            }
+                        }
+                        val background=when(theme){"Dark"->"#1C2229";"AMOLED"->"#000000";"Sepia"->"#F3E9D8";else->"#FFFFFF"}
+                        val foreground=if(theme in listOf("Dark","AMOLED"))"#F6F2E8" else "#352F29"
+                        val columns=if(mode=="pages")
+                            "html{overflow-x:auto!important;overflow-y:hidden!important;height:100%!important;}"+
+                            "body{height:100vh!important;column-width:calc(100vw - 48px)!important;"+
+                            "column-gap:48px!important;column-fill:auto!important;overflow:visible!important;}"
+                        else "html{overflow-x:hidden!important;overflow-y:auto!important;}"
+                        val css="<meta name='viewport' content='width=device-width,initial-scale=1.0'>"+
+                            "<style>html{margin:0!important;padding:0!important;}body{"+
+                            "background:"+background+"!important;color:"+foreground+"!important;"+
+                            "font-size:"+font.toInt()+"px!important;line-height:"+(line/100f)+"!important;"+
+                            "padding:24px!important;margin:0!important;box-sizing:border-box!important;}"+
+                            "img,svg{max-width:100%!important;height:auto!important;}"+columns+"</style>"
+                        val html=pageFile.readText(Charsets.UTF_8)
+                        val result=if(html.contains("</head>",true))
+                            html.replace("</head>",css+"</head>",true) else css+html
+                        view.loadDataWithBaseURL(pageFile.parentFile!!.toURI().toString(),
+                            result,"application/xhtml+xml","UTF-8",null)
+                        webView=view
+                        view
+                    },modifier=Modifier.fillMaxSize())
+                }
+            } else {
+                var bitmap by remember(chapter,book.path) {mutableStateOf<Bitmap?>(null)}
+                LaunchedEffect(chapter,book.path) {
+                    bitmap=try {withContext(Dispatchers.IO) {
+                        ReaderMedia.page(bookFile,book.type,chapter)
+                    }}catch(e:Exception){loadError=e.message;null}
+                }
+                if(bitmap==null) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center) {
+                    CircularProgressIndicator()
+                } else key(chapter) {
+                    AndroidView(factory={ctx->
+                        ZoomPageView(ctx,onNext={if(swipe)turn(1)},
+                            onPrevious={if(swipe)turn(-1)},
+                            onToggleControls={chrome=!chrome},
+                            onZoomChanged={zoom->prefs.edit().putFloat("zoom",zoom).apply()})
+                            .apply {setPage(bitmap!!,prefs.getFloat("zoom",1f),prefs.getBoolean("fitWidth",false))}
+                    },modifier=Modifier.fillMaxSize())
+                }
+            }
+            if(arrows) {
+                Row(Modifier.fillMaxWidth().align(Alignment.Center),horizontalArrangement=Arrangement.SpaceBetween,
+                    verticalAlignment=Alignment.CenterVertically) {
+                    FilledTonalIconButton(onClick={turn(-1)},modifier=Modifier.size(52.dp),
+                        colors=IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor=paper.copy(alpha=0.9f))) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack,"Əvvəlki səhifə",tint=textColor)
+                    }
+                    FilledTonalIconButton(onClick={turn(1)},modifier=Modifier.size(52.dp),
+                        colors=IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor=paper.copy(alpha=0.9f))) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward,"Növbəti səhifə",tint=textColor)
+                    }
+                }
+            }
+            AnimatedVisibility(chrome,modifier=Modifier.align(Alignment.TopCenter)) {
+                Surface(color=paper.copy(alpha=0.98f),shadowElevation=4.dp) {
+                    Row(Modifier.fillMaxWidth().height(62.dp).padding(horizontal=10.dp),
+                        verticalAlignment=Alignment.CenterVertically) {
+                        IconButton(onClick=onExit,modifier=Modifier.size(48.dp)) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack,"Kitabxanaya qayıt",tint=textColor)
+                        }
+                        Text(book.title,modifier=Modifier.weight(1f),maxLines=1,
+                            overflow=TextOverflow.Ellipsis,color=textColor,fontWeight=FontWeight.Medium)
+                        if(book.type=="epub") IconButton(onClick={showChapters=true},
+                            modifier=Modifier.size(48.dp)) {
+                            Icon(Icons.Default.List,"Fəsillər",tint=textColor)
+                        }
+                        FilledTonalIconButton(onClick={showSettings=true},modifier=Modifier.size(48.dp)) {
+                            Text("Aa",fontSize=18.sp,fontWeight=FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+            if(!chrome) {
+                Text((book.progress).toString()+"%",modifier=Modifier.align(Alignment.BottomStart)
+                    .padding(start=24.dp,bottom=12.dp),fontSize=12.sp,color=textColor.copy(alpha=0.6f))
+                Text(if(book.type=="epub")"Fəsil "+(chapter+1) else (chapter+1).toString()+"/"+pageCount,
+                    modifier=Modifier.align(Alignment.BottomEnd).padding(end=24.dp,bottom=12.dp),
+                    fontSize=12.sp,color=textColor.copy(alpha=0.6f))
+            }
+            if(chrome) {
+                Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(paper.copy(alpha=0.97f))
+                    .padding(horizontal=16.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
+                    IconButton(onClick={turn(-1)}) {Icon(Icons.AutoMirrored.Filled.ArrowBack,"Əvvəlki",tint=textColor)}
+                    Text(if(book.type=="epub")"Fəsil "+(chapter+1)+"/"+chapterFiles.size
+                        else "Səhifə "+(chapter+1)+"/"+pageCount,
+                        modifier=Modifier.weight(1f),color=textColor,fontSize=13.sp)
+                    IconButton(onClick={turn(1)}) {Icon(Icons.AutoMirrored.Filled.ArrowForward,"Növbəti",tint=textColor)}
+                }
+            }
+        }
+    }
+    if(showSettings) {
+        ModalBottomSheet(onDismissRequest={showSettings=false},containerColor=Cream) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                .padding(horizontal=24.dp).padding(bottom=24.dp)) {
+                Text("Oxuma ayarları",fontSize=24.sp,fontWeight=FontWeight.Bold)
+                Spacer(Modifier.height(20.dp))
+                if(book.type=="epub") {
+                    Text("Şrift ölçüsü  "+font.toInt()+" px",fontWeight=FontWeight.SemiBold)
+                    Slider(font,{font=it; prefs.edit().putInt("fontSize",it.toInt()).apply()},valueRange=12f..34f)
+                    Text("Sətirarası məsafə  "+line.toInt()+"%",fontWeight=FontWeight.SemiBold)
+                    Slider(line,{line=it; prefs.edit().putInt("lineSpacing",it.toInt()).apply()},valueRange=110f..210f)
+                    Text("Oxuma rejimi",fontWeight=FontWeight.SemiBold)
+                    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        FilterChip(mode=="pages",{mode="pages";prefs.edit().putString("epubMode",mode).apply()},
+                            label={Text("Səhifələmə")})
+                        FilterChip(mode=="scroll",{mode="scroll";prefs.edit().putString("epubMode",mode).apply()},
+                            label={Text("Continuous scroll")})
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Text("Tema",fontWeight=FontWeight.SemiBold)
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    listOf("Light","Sepia","Dark","AMOLED").forEach {t->
+                        FilterChip(theme==t,{theme=t;prefs.edit().putString("theme",t).apply()},
+                            label={Text(t,fontSize=11.sp)})
+                    }
+                }
+                HorizontalDivider(Modifier.padding(vertical=12.dp))
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                    Text("Swipe ilə səhifə çevirmə",modifier=Modifier.weight(1f))
+                    Switch(swipe,{swipe=it;prefs.edit().putBoolean("swipeTurn",it).apply()})
+                }
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                    Text("Sağ-sol düymələri göstər",modifier=Modifier.weight(1f))
+                    Switch(arrows,{arrows=it;prefs.edit().putBoolean("sideButtons",it).apply()})
+                }
+                if(book.type!="epub") {
+                    var fit by remember {mutableStateOf(prefs.getBoolean("fitWidth",false))}
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                        Text("Fit to Width",modifier=Modifier.weight(1f))
+                        Switch(fit,{fit=it;prefs.edit().putBoolean("fitWidth",it).apply()})
+                    }
+                }
+                Button(onClick={showSettings=false},modifier=Modifier.fillMaxWidth().height(52.dp)) {
+                    Text("Oxumağa davam et")
+                }
+            }
+        }
+    }
+    if(showChapters) {
+        ModalBottomSheet(onDismissRequest={showChapters=false},containerColor=Cream) {
+            Column(Modifier.fillMaxWidth().padding(horizontal=24.dp)) {
+                Text("Fəsillər",fontSize=24.sp,fontWeight=FontWeight.Bold)
+                LazyColumn(contentPadding=PaddingValues(bottom=36.dp)) {
+                    items(chapterFiles.size) {index->
+                        ListItem(
+                            headlineContent={Text(chapterFiles[index].nameWithoutExtension
+                                .replace('_',' ').ifBlank{"Fəsil "+(index+1)})},
+                            leadingContent={Text((index+1).toString())},
+                            modifier=Modifier.clickable {
+                                chapter=index;fraction=0.0;saveProgress(0.0);showChapters=false
+                            }
+                        )
+                        HorizontalDivider()
+                    }
+                }
+            }
+        }
     }
 }
