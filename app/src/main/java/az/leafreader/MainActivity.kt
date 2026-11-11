@@ -84,7 +84,15 @@ class MainActivity : Activity() {
         val clamped = fraction.coerceIn(0.0, 1.0)
         book.put("page", page)
         book.put("scrollFraction", clamped)
-        val raw = ((page + clamped) / total * 100.0).roundToInt()
+        val raw = if(book.optString("type")=="epub" && epubChapters.isNotEmpty()) {
+            // Approximate text progress by chapter XHTML size rather than treating
+            // a 2-paragraph chapter and a 100-page chapter equally.
+            val lengths=epubChapters.map {it.length().coerceAtLeast(1L)}
+            val totalBytes=lengths.sum().toDouble().coerceAtLeast(1.0)
+            val before=lengths.take(page).sum().toDouble()
+            ((before + lengths[page.coerceIn(0,lengths.lastIndex)]*clamped) / totalBytes*100.0)
+                .roundToInt()
+        } else ((page + clamped) / total * 100.0).roundToInt()
         val progress = if (book.optString("status") == "Bitirilib") 100 else raw.coerceIn(0, 99)
         book.put("progress", progress)
         if (book.optString("status") == "Oxunmayıb") book.put("status", "Oxunur")
@@ -288,7 +296,7 @@ class MainActivity : Activity() {
         listOf("Ümumi kitab sayı" to books.size.toString(),
             "Bitirilmiş kitablar" to completedBooks.size.toString(),
             "Hazırda oxunur" to books.count { it.optString("status")=="Oxunur" }.toString(),
-            "Bitirilmiş kitabların səhifələri" to completedBooks.sumOf {it.optInt("pages",0)}.toString(),
+            "Bitirilmiş PDF/CBZ səhifələri" to completedBooks.sumOf {it.optInt("pages",0)}.toString(),
             "Oxuma müddəti (dəqiqə)" to (books.sumOf {it.optLong("readingMs",0L)}/60000L).toString()).forEach { (label,value) ->
             val card=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(14),dp(16),dp(14));setBackgroundColor(panel()) }
             card.addView(TextView(this).apply {text=label;textSize=13f;setTextColor(fg())})
@@ -489,7 +497,7 @@ class MainActivity : Activity() {
             }
             if(total==0) throw IllegalArgumentException("Oxuna bilən səhifə yoxdur")
             page=page.coerceIn(0,total-1)
-            b.put("pages",total)
+            b.put("pages",if(b.optString("type")=="epub")0 else total)
             if(b.optString("status")!="Bitirilib")b.put("status","Oxunur")
             bar(b.getString("title"),true)
             setFullScreen(true)
