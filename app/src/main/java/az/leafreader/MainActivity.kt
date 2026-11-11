@@ -505,6 +505,122 @@ class MainActivity : Activity() {
             Toast.makeText(this,"Açılmadı: ${e.message}",Toast.LENGTH_LONG).show(); closeReader(); shelf()
         }
     }
+    private fun attachSideButtons() {
+        val host=readerContainer ?:return
+        val overlay=LinearLayout(this).apply {
+            orientation=LinearLayout.HORIZONTAL
+            gravity=Gravity.CENTER_VERTICAL
+        }
+        fun edge(label:String,dir:Int)=TextView(this).apply {
+            text=label;textSize=24f;gravity=Gravity.CENTER
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.argb(155,26,63,66))
+            setOnClickListener { readerTurn(dir) }
+        }
+        overlay.addView(edge("‹",-1),LinearLayout.LayoutParams(dp(42),dp(72)))
+        overlay.addView(View(this),LinearLayout.LayoutParams(0,1,1f))
+        overlay.addView(edge("›",1),LinearLayout.LayoutParams(dp(42),dp(72)))
+        host.addView(overlay,FrameLayout.LayoutParams(-1,-2,Gravity.CENTER_VERTICAL))
+        sideButtons=overlay
+        overlay.visibility=if(settings.getBoolean("sideButtons",true))View.VISIBLE else View.GONE
+    }
+    private fun readerTurn(direction:Int) {
+        if(current?.optString("type")=="epub") {
+            web?.let { view ->
+                val max=(view.contentHeight*view.scale-view.height).toInt().coerceAtLeast(0)
+                val step=(view.height*0.86f).toInt().coerceAtLeast(1)
+                if(direction>0 && view.scrollY<max-8) {
+                    view.smoothScrollTo(0,(view.scrollY+step).coerceAtMost(max))
+                    return
+                }
+                if(direction<0 && view.scrollY>8) {
+                    view.smoothScrollTo(0,(view.scrollY-step).coerceAtLeast(0))
+                    return
+                }
+            }
+        }
+        val rtl=current?.optString("type")=="cbz" && settings.getBoolean("cbzRtl",false)
+        navigate(if(rtl)-direction else direction)
+    }
+    private fun readerOptions() {
+        val book=current ?:return
+        val content=LinearLayout(this).apply {
+            orientation=LinearLayout.VERTICAL
+            setPadding(dp(18),dp(8),dp(18),dp(8))
+        }
+        val themeChoices=listOf("Light","Dark","Sepia","AMOLED")
+        content.addView(TextView(this).apply {text="Oxuma teması";textSize=17f})
+        val picker=Spinner(this).apply {
+            adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,themeChoices)
+            setSelection(themeChoices.indexOf(settings.getString("theme","Light")).coerceAtLeast(0))
+        }
+        content.addView(picker)
+        var fontValue=settings.getInt("fontSize",18)
+        var lineValue=settings.getInt("lineSpacing",160)
+        if(book.optString("type")=="epub") {
+            val fontLabel=TextView(this).apply {text="Şrift ölçüsü: $fontValue px";setPadding(0,dp(12),0,0)}
+            content.addView(fontLabel)
+            content.addView(SeekBar(this).apply {
+                max=22;progress=(fontValue-12).coerceIn(0,22)
+                setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(bar:SeekBar?,progress:Int,fromUser:Boolean) {
+                        fontValue=12+progress;fontLabel.text="Şrift ölçüsü: $fontValue px"
+                    }
+                    override fun onStartTrackingTouch(bar:SeekBar?) {}
+                    override fun onStopTrackingTouch(bar:SeekBar?) {}
+                })
+            })
+            val lineLabel=TextView(this).apply {text="Sətirarası məsafə: $lineValue%";setPadding(0,dp(12),0,0)}
+            content.addView(lineLabel)
+            content.addView(SeekBar(this).apply {
+                max=100;progress=(lineValue-110).coerceIn(0,100)
+                setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(bar:SeekBar?,progress:Int,fromUser:Boolean) {
+                        lineValue=110+progress;lineLabel.text="Sətirarası məsafə: $lineValue%"
+                    }
+                    override fun onStartTrackingTouch(bar:SeekBar?) {}
+                    override fun onStopTrackingTouch(bar:SeekBar?) {}
+                })
+            })
+        }
+        val arrows=CheckBox(this).apply {
+            text="Ekranın sağ və solunda vərəqləmə düymələri"
+            isChecked=settings.getBoolean("sideButtons",true)
+        }
+        content.addView(arrows)
+        val swipe=CheckBox(this).apply {
+            text="Swipe ilə səhifə çevirmə"
+            isChecked=settings.getBoolean("swipeTurn",false)
+        }
+        content.addView(swipe)
+        val fit=CheckBox(this).apply {
+            text="PDF/CBZ: Fit to Width"
+            isChecked=settings.getBoolean("fitWidth",false)
+            visibility=if(book.optString("type")=="epub")View.GONE else View.VISIBLE
+        }
+        content.addView(fit)
+        val dialog=AlertDialog.Builder(this).setTitle("Oxuyucu ayarları").setView(content)
+            .setPositiveButton("Tətbiq et") {_,_->
+                settings.edit()
+                    .putString("theme",themeChoices[picker.selectedItemPosition])
+                    .putInt("fontSize",fontValue)
+                    .putInt("lineSpacing",lineValue)
+                    .putBoolean("sideButtons",arrows.isChecked)
+                    .putBoolean("swipeTurn",swipe.isChecked)
+                    .putBoolean("fitWidth",fit.isChecked).apply()
+                if(book.optString("type")=="epub") {
+                    web?.let { view ->
+                        val max=(view.contentHeight*view.scale-view.height).toInt().coerceAtLeast(0)
+                        book.put("scrollFraction",scrollFraction(view,max))
+                    }
+                }
+                root.setBackgroundColor(bg())
+                drawPage()
+                sideButtons?.visibility=if(arrows.isChecked)View.VISIBLE else View.GONE
+                if(!readerBarsVisible)toggleBars()
+            }.setNegativeButton("Bağla",null).create()
+        dialog.show()
+    }
     private fun bookmark() {
         val b=current ?:return
         val marks=b.optJSONArray("bookmarks") ?: JSONArray()
