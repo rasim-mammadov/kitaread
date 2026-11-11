@@ -80,7 +80,7 @@ class BookStore(private val context: Context) {
         }catch(_:Exception){0L}
     }
     fun sortBooks(values:List<ReaderBook>,kind:String="Son oxunanlar"):List<ReaderBook> {
-        val data=values.associate {it.path to find(it.path)}
+        val data=records().associateBy {it.optString("path")}
         fun group(b:ReaderBook):Int=when(b.status) {
             "Oxunur"->0
             "Oxunmayıb"->1
