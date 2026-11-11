@@ -135,6 +135,9 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         mutableStateOf(store.setting().getString("librarySort","Son oxunanlar") ?: "Son oxunanlar")
     }
     var activeReaderTheme by remember {mutableStateOf(store.setting().getString("theme","Sepia") ?: "Sepia")}
+    var language by remember {
+        mutableStateOf(store.setting().getString("language","az") ?: "az")
+    }
     var appTheme by remember {
         mutableStateOf(store.setting().getString("theme","Sepia") ?: "Sepia")
     }
@@ -208,6 +211,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                 Toast.LENGTH_LONG).show()
         }catch(e:Exception){Toast.makeText(context,e.message ?: "Import xətası",Toast.LENGTH_LONG).show()}
     }
+    CompositionLocalProvider(LocalUiLanguage provides language) {
     MaterialTheme(colorScheme=appColors,
         shapes=Shapes(medium=RoundedCornerShape(16.dp),large=RoundedCornerShape(24.dp))) {
         if(selected==null && showDashboard) {
@@ -398,6 +402,10 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         if(showSettingsHome) {
             LibrarySettingsSheet(
                 store=store,appTheme=appTheme,onTheme={updateAppTheme(it)},
+                language=language,onLanguage={next->
+                    language=next
+                    store.setting().edit().putString("language",next).apply()
+                },
                 onExport={jsonExport.launch("leaf-reader-metadata.json")},
                 onImport={jsonImport.launch(arrayOf("application/json","text/plain"))},
                 onRestore={path->
@@ -511,6 +519,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                 dismissButton={TextButton(onClick={deleteBook=null}) {Text(ui("Ləğv et"))}}
             )
         }
+    }
     }
 }
 
