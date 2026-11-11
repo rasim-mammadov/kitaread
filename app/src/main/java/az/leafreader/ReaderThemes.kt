@@ -36,10 +36,10 @@ fun ThemePickerDialog(store:BookStore,onDismiss:()->Unit) {
     var selected by remember {mutableStateOf(store.setting().getString("theme","Sepia") ?: "Sepia")}
     AlertDialog(
         onDismissRequest=onDismiss,
-        title={Text("Oxuma temaları",fontWeight=FontWeight.Bold)},
+        title={Text(ui("Oxuma temaları"),fontWeight=FontWeight.Bold)},
         text={
             Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text("Hazır temalardan seç. Seçim bütün kitablarda saxlanılır.",
+                Text(ui("Hazır temalardan seç. Seçim bütün kitablarda saxlanılır."),
                     fontSize=13.sp,color=Color.Gray)
                 LazyColumn(Modifier.heightIn(max=425.dp),
                     verticalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -58,10 +58,10 @@ fun ThemePickerDialog(store:BookStore,onDismiss:()->Unit) {
                                 Box(Modifier.size(width=56.dp,height=45.dp)
                                     .background(t.paper,RoundedCornerShape(8.dp)),
                                     contentAlignment=Alignment.Center) {
-                                    Text("Aa",color=t.ink,fontSize=18.sp)
+                                    Text(ui("Aa"),color=t.ink,fontSize=18.sp)
                                 }
                                 Spacer(Modifier.width(14.dp))
-                                Text(t.name,modifier=Modifier.weight(1f),
+                                Text(ui(t.name),modifier=Modifier.weight(1f),
                                     fontWeight=if(selected==t.name)FontWeight.Bold else FontWeight.Normal)
                                 RadioButton(selected=selected==t.name,
                                     onClick={
@@ -74,6 +74,6 @@ fun ThemePickerDialog(store:BookStore,onDismiss:()->Unit) {
                 }
             }
         },
-        confirmButton={TextButton(onClick=onDismiss){Text("Bağla")}}
+        confirmButton={TextButton(onClick=onDismiss){Text(ui("Bağla"))}}
     )
 }
