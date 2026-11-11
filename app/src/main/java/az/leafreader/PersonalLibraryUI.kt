@@ -62,7 +62,8 @@ fun BookDetailsSheet(book:ReaderBook,store:BookStore,onClose:()->Unit,onChanged:
             Text("Janr",fontWeight=FontWeight.SemiBold)
             Column(Modifier.fillMaxWidth()) {
                 GenreCatalog.genres.chunked(3).forEach { group->
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(5.dp)) {
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement=Arrangement.spacedBy(5.dp)) {
                         group.forEach { g->
                             FilterChip(selected=genre==g,onClick={genre=g},
                                 label={Text(g,fontSize=11.sp)})
