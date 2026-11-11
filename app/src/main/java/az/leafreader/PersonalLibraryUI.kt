@@ -42,6 +42,7 @@ fun BookDetailsSheet(book:ReaderBook,store:BookStore,onClose:()->Unit,onChanged:
         })
     }
     var rating by remember(book.path){mutableFloatStateOf(source?.optDouble("rating",0.0)?.toFloat() ?: 0f)}
+    var status by remember(book.path){mutableStateOf(source?.optString("status","Oxunmayıb") ?: "Oxunmayıb")}
     ModalBottomSheet(onDismissRequest=onClose,containerColor=Color(0xFFF8F6F0)) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
             .padding(horizontal=24.dp).padding(bottom=24.dp),
@@ -51,6 +52,13 @@ fun BookDetailsSheet(book:ReaderBook,store:BookStore,onClose:()->Unit,onChanged:
                 modifier=Modifier.fillMaxWidth(),singleLine=true)
             OutlinedTextField(author,{author=it},label={Text("Müəllif")},
                 modifier=Modifier.fillMaxWidth(),singleLine=true)
+            Text("Oxu statusu",fontWeight=FontWeight.SemiBold)
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                listOf("Oxunmayıb","Oxunur","Bitirilib","Yarımçıq saxlanılıb").forEach {item->
+                    FilterChip(selected=status==item,onClick={status=item},label={Text(item)})
+                }
+            }
             Text("Janr",fontWeight=FontWeight.SemiBold)
             Column(Modifier.fillMaxWidth()) {
                 GenreCatalog.genres.chunked(3).forEach { group->
@@ -104,6 +112,16 @@ fun BookDetailsSheet(book:ReaderBook,store:BookStore,onClose:()->Unit,onChanged:
                     row.put("author",author.trim())
                     row.put("genre",genre)
                     row.put("rating",rating.toInt())
+                    row.put("status",status)
+                    if(status=="Bitirilib") {
+                        row.put("progress",100)
+                        if(row.optString("completedAt").isEmpty()) {
+                            row.put("completedAt",
+                                SimpleDateFormat("yyyy-MM-dd",Locale.US).format(Date()))
+                        }
+                    } else if(row.optString("status")!="Bitirilib" && row.optInt("progress")==100) {
+                        row.put("progress",99)
+                    }
                 }
                 onChanged()
                 onClose()
