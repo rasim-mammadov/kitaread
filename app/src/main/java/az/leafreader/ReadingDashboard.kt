@@ -13,6 +13,8 @@ import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,6 +32,7 @@ private val SoftBackground=Color(0xFFF8F6F0)
 fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
     // A fresh snapshot on screen entry; no fabricated sample values.
     val overview=remember {ReadingStats.calculate(store.records(),LocalDate.now())}
+    val context=LocalContext.current
     Scaffold(
         contentWindowInsets=WindowInsets.safeDrawing,
         containerColor=MaterialTheme.colorScheme.background,
@@ -48,8 +51,8 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
         }
     ) { insets->
         LazyColumn(Modifier.fillMaxSize().padding(insets).padding(horizontal=18.dp),
-            verticalArrangement=Arrangement.spacedBy(14.dp),
-            contentPadding=PaddingValues(bottom=36.dp)) {
+            verticalArrangement=Arrangement.spacedBy(22.dp),
+            contentPadding=PaddingValues(bottom=44.dp)) {
             item {
                 Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                     MetricTile("Bitirilmiş kitab",overview.finishedBooks.toString(),
@@ -69,7 +72,11 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                         "Aktiv gün: ${overview.activeDays}",Modifier.weight(1f))
                 }
             }
-            item { ReadingInsightsPanel(store,overview,LocalDate.now()) }
+            item {
+                Column(verticalArrangement=Arrangement.spacedBy(20.dp)) {
+                    ReadingInsightsPanel(store,overview,LocalDate.now())
+                }
+            }
             item {
                 Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surface),
                     shape=RoundedCornerShape(22.dp)) {
@@ -162,13 +169,28 @@ fun ReadingDashboard(store:BookStore,onBack:()->Unit) {
                         val displayedTitle=if(chosen in unlocked)chosen else unlocked.firstOrNull().orEmpty()
                         Text(ui(if(displayedTitle.isNotBlank())"🏆 ${displayedTitle}" else "📚 Kitab Kəşfiyyatçısı"),
                             fontSize=18.sp,fontWeight=FontWeight.SemiBold)
+                        val achievements=ReadingInsights.awards(overview).count {it.earned}
                         Text(ui("${overview.finishedBooks} kitab bitirilib · "+
                             "${overview.activeDays} aktiv oxu günü"),
                             fontSize=14.sp,color=MaterialTheme.colorScheme.primary)
-                        if(earned.isEmpty()) {
-                            Text(ui("Janra uyğun titul üçün janrı müəyyən edilmiş kitabı bitir."),
-                                fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                        } else {
+                        Text("$achievements "+ui("nailiyyət"),
+                            fontSize=14.sp,fontWeight=FontWeight.SemiBold,
+                            color=MaterialTheme.colorScheme.primary)
+                        OutlinedButton(onClick={
+                            try {
+                                ReaderPassportShare.share(context,
+                                    if(displayedTitle.isNotBlank())displayedTitle
+                                    else UiLanguage.translate("Kitab Kəşfiyyatçısı",
+                                        store.setting().getString("language","az") ?: "az"),
+                                    overview.finishedBooks,overview.activeDays,achievements)
+                            }catch(e:Exception){
+                                Toast.makeText(context,e.message ?: "Paylaşma xətası",
+                                    Toast.LENGTH_LONG).show()
+                            }
+                        },modifier=Modifier.fillMaxWidth()) {
+                            Text(ui("Pasportu şəkil kimi paylaş"))
+                        }
+                        if(earned.isNotEmpty()) {
                             Text(ui("Qazandığın titullar"),fontWeight=FontWeight.Medium)
                             earned.forEach { (genre,count)->
                                 val title=GenreCatalog.title(genre)
