@@ -49,14 +49,15 @@ object LibraryPalette {
 fun LibrarySettingsSheet(
     store:BookStore,appTheme:String,onTheme:(String)->Unit,
     onExport:()->Unit,onImport:()->Unit,
-    onRestore:(String)->Unit,onClose:()->Unit
+    onRestore:(String)->Unit,onSort:(String)->Unit,onClose:()->Unit
 ) {
     var section by remember {mutableStateOf("Settings")}
     val prefs=store.setting()
     var follow by remember {mutableStateOf(prefs.getBoolean("readerFollowsApp",true))}
     var readerTheme by remember {mutableStateOf(prefs.getString("readerTheme","Sepia") ?: "Sepia")}
     var sort by remember {mutableStateOf(prefs.getString("librarySort","Son oxunanlar") ?: "Son oxunanlar")}
-    val hidden=store.records().filter {it.optBoolean("hidden",false)}
+    var hiddenRefresh by remember {mutableIntStateOf(0)}
+    val hidden=remember(hiddenRefresh) {store.records().filter {it.optBoolean("hidden",false)}}
     ModalBottomSheet(onDismissRequest=onClose) {
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.88f).padding(horizontal=20.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
@@ -127,7 +128,7 @@ fun LibrarySettingsSheet(
                     listOf("Son oxunanlar","Əlavə edilmə tarixi","A–Z","Z–A","Progress")
                         .forEach {value->
                             Row(Modifier.fillMaxWidth().clickable {
-                                sort=value;prefs.edit().putString("librarySort",value).apply()
+                                sort=value;prefs.edit().putString("librarySort",value).apply();onSort(value)
                             },verticalAlignment=Alignment.CenterVertically) {
                                 RadioButton(selected=sort==value,onClick={
                                     sort=value;prefs.edit().putString("librarySort",value).apply()
@@ -141,7 +142,10 @@ fun LibrarySettingsSheet(
                     hidden.forEach {b->
                         Row(verticalAlignment=Alignment.CenterVertically) {
                             Text(b.optString("title"),modifier=Modifier.weight(1f))
-                            TextButton(onClick={onRestore(b.optString("path"))}) {
+                            TextButton(onClick={
+                                onRestore(b.optString("path"))
+                                hiddenRefresh++
+                            }) {
                                 Text("Geri qaytar")
                             }
                         }
