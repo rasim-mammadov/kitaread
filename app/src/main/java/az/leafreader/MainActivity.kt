@@ -506,6 +506,8 @@ class MainActivity : Activity() {
             }
             foot.addView(controls)
             foot.addView(action("☷") { bookmarkList() })
+            foot.addView(action("≡") { chaptersDialog() })
+            foot.addView(action("⇥") { jumpDialog() })
             foot.addView(action("▶") { readerTurn(1) }); root.addView(foot)
             footerView=foot
             readerBarsVisible=true
@@ -575,7 +577,7 @@ class MainActivity : Activity() {
     private fun onEpubScrolled(view:WebView) {
         if(!pagedEpub())return
         val step=view.width.coerceAtLeast(1)
-        epubPageCount=(epubMaxX(view)/step)+1
+        epubPageCount=max(1,(epubMaxX(view)+step-1)/step+1)
         epubPageIndex=(view.scrollX.toFloat()/step).roundToInt().coerceIn(0,epubPageCount-1)
         val fraction=if(epubPageCount<=1)0.0
             else epubPageIndex.toDouble()/(epubPageCount-1)
@@ -628,6 +630,16 @@ class MainActivity : Activity() {
             isChecked=settings.getBoolean("sideButtons",true)
         }
         content.addView(arrows)
+        val modeLabel=TextView(this).apply {text="EPUB oxuma rejimi";setPadding(0,dp(10),0,0)}
+        modeLabel.visibility=if(book.optString("type")=="epub")View.VISIBLE else View.GONE
+        content.addView(modeLabel)
+        val modeOptions=listOf("Səhifələmə","Continuous scroll")
+        val mode=Spinner(this).apply {
+            adapter=ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,modeOptions)
+            setSelection(if(pagedEpub())0 else 1)
+            visibility=if(book.optString("type")=="epub")View.VISIBLE else View.GONE
+        }
+        content.addView(mode)
         val swipe=CheckBox(this).apply {
             text="Swipe ilə səhifə çevirmə"
             isChecked=settings.getBoolean("swipeTurn",false)
@@ -647,11 +659,17 @@ class MainActivity : Activity() {
                     .putInt("lineSpacing",lineValue)
                     .putBoolean("sideButtons",arrows.isChecked)
                     .putBoolean("swipeTurn",swipe.isChecked)
+                    .putString("epubMode",if(mode.selectedItemPosition==0)"pages" else "scroll")
                     .putBoolean("fitWidth",fit.isChecked).apply()
                 if(book.optString("type")=="epub") {
                     web?.let { view ->
-                        val max=(view.contentHeight*view.scale-view.height).toInt().coerceAtLeast(0)
-                        book.put("scrollFraction",scrollFraction(view,max))
+                        val fraction=if(pagedEpub()) {
+                            if(epubPageCount<=1)0.0 else epubPageIndex.toDouble()/(epubPageCount-1)
+                        } else {
+                            val max=(view.contentHeight*view.scale-view.height).toInt().coerceAtLeast(0)
+                            scrollFraction(view,max)
+                        }
+                        book.put("scrollFraction",fraction)
                     }
                 }
                 root.setBackgroundColor(bg())
@@ -660,6 +678,68 @@ class MainActivity : Activity() {
                 if(!readerBarsVisible)toggleBars()
             }.setNegativeButton("Bağla",null).create()
         dialog.show()
+    }
+    private fun chaptersDialog() {
+        if(current?.optString("type")!="epub") {
+            Toast.makeText(this,"Fəsillər siyahısı EPUB üçündür",Toast.LENGTH_SHORT).show()
+            return
+        }
+        val chapters=epubChapters.mapIndexed { index,file ->
+            val source=try {file.readText(Charsets.UTF_8).take(16000)}catch(_:Exception){""}
+            val pattern=Regex(
+                """<(?:h1|h2|title)\b[^>]*>(.*?)</(?:h1|h2|title)>""",
+                setOf(RegexOption.IGNORE_CASE,RegexOption.DOT_MATCHES_ALL)
+            )
+            val found=pattern.find(source)?.groupValues?.getOrNull(1)
+                ?.replace(Regex("<[^>]+>"),"")?.trim()
+            val label=if(found.isNullOrBlank())
+                file.nameWithoutExtension.replace('_',' ').take(55)
+            else found.take(55)
+            "${index+1}. $label"
+        }.toTypedArray()
+        AlertDialog.Builder(this).setTitle("Fəsillər").setItems(chapters) {_,which->
+            if(which!=page) {
+                page=which
+                current?.put("page",page)
+                current?.put("scrollFraction",0.0)
+                drawPage()
+            }
+        }.setNegativeButton("Bağla",null).show()
+    }
+    private fun jumpDialog() {
+        val b=current ?:return
+        val progress=if(b.optString("type")=="epub" && pagedEpub())epubPageIndex else page
+        val maximum=if(b.optString("type")=="epub" && pagedEpub())epubPageCount else total
+        val label=TextView(this).apply {
+            text="Mövqe: ${progress+1} / $maximum"
+            textSize=16f;setPadding(dp(18),dp(12),dp(18),dp(8))
+        }
+        val bar=SeekBar(this).apply {max=(maximum-1).coerceAtLeast(0);this.progress=progress}
+        val layout=LinearLayout(this).apply {
+            orientation=LinearLayout.VERTICAL;addView(label);addView(bar)
+            setPadding(dp(12),0,dp(12),dp(10))
+        }
+        bar.setOnSeekBarChangeListener(object:SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seek:SeekBar?,progress:Int,fromUser:Boolean) {
+                label.text="Mövqe: ${progress+1} / $maximum"
+            }
+            override fun onStartTrackingTouch(seek:SeekBar?) {}
+            override fun onStopTrackingTouch(seek:SeekBar?) {}
+        })
+        AlertDialog.Builder(this).setTitle("Mövqeyə keç").setView(layout)
+            .setPositiveButton("Keç") {_,_->
+                if(b.optString("type")=="epub" && pagedEpub()) {
+                    web?.let {view->
+                        view.scrollTo((bar.progress*view.width).coerceAtMost(epubMaxX(view)),0)
+                        onEpubScrolled(view);recordPosition(
+                            if(epubPageCount<=1)0.0 else epubPageIndex.toDouble()/(epubPageCount-1),true)
+                    }
+                } else {
+                    page=bar.progress
+                    b.put("scrollFraction",0.0)
+                    drawPage();recordPosition(0.0,true)
+                }
+            }.setNegativeButton("Bağla",null).show()
     }
     private fun bookmark() {
         val b=current ?:return
