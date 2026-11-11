@@ -559,6 +559,80 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                 refreshLibrary()
             })
         }
+        if(showBulkCollection) {
+            AlertDialog(
+                onDismissRequest={showBulkCollection=false},
+                title={Text(ui("Kolleksiyaya əlavə et"))},
+                text={
+                    Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        Text(ui("Seçilmiş kitablar")+": ${selectedBooks.size}")
+                        OutlinedTextField(value=bulkCollectionName,onValueChange={bulkCollectionName=it},
+                            label={Text(ui("Kolleksiya adı"))},singleLine=true,
+                            modifier=Modifier.fillMaxWidth())
+                        val collectionOptions=store.collections()
+                        if(collectionOptions.isNotEmpty()) {
+                            Text(ui("Mövcud kolleksiyalar"),fontSize=12.sp)
+                            collectionOptions.take(8).forEach {name->
+                                TextButton(onClick={bulkCollectionName=name}) {Text(name)}
+                            }
+                        }
+                    }
+                },
+                confirmButton={
+                    TextButton(enabled=selectedBooks.isNotEmpty() && bulkCollectionName.trim().isNotBlank(),
+                        onClick={
+                            store.bulkAddToCollection(selectedBooks,bulkCollectionName)
+                            showBulkCollection=false
+                            bulkCollectionName=""
+                            stopSelection()
+                            refreshLibrary()
+                        }) {Text(ui("Əlavə et"))}
+                },
+                dismissButton={TextButton(onClick={showBulkCollection=false}) {Text(ui("Ləğv et"))}}
+            )
+        }
+        if(showBulkHideConfirm) {
+            AlertDialog(
+                onDismissRequest={showBulkHideConfirm=false},
+                title={Text(ui("Kitabları gizlət?"))},
+                text={Text(ui("Seçilmiş kitablar")+": ${selectedBooks.size}. "+
+                    ui("Fayllar silinmir. Kitabları Parametrlərdən bərpa etmək olar."))},
+                confirmButton={TextButton(onClick={
+                    store.bulkHide(selectedBooks)
+                    showBulkHideConfirm=false
+                    stopSelection()
+                    refreshLibrary()
+                }) {Text(ui("Gizlət"))}},
+                dismissButton={TextButton(onClick={showBulkHideConfirm=false}) {Text(ui("Ləğv et"))}}
+            )
+        }
+        if(showDuplicates) {
+            AlertDialog(
+                onDismissRequest={showDuplicates=false},
+                title={Text(ui("Dublikat kitablar"))},
+                text={
+                    Column(Modifier.heightIn(max=430.dp).verticalScroll(rememberScrollState()),
+                        verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                        Text(ui("Yalnız eyni fayl məzmunu yoxlanılır."),
+                            fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        if(duplicatesScanning) CircularProgressIndicator()
+                        else if(duplicateScanError!=null) Text(duplicateScanError.orEmpty())
+                        else if(duplicateGroups.isEmpty()) Text(ui("Dublikat tapılmadı"))
+                        else duplicateGroups.forEachIndexed {index,paths->
+                            Text("${index+1}. "+paths.size+" "+ui("nüsxə"),
+                                fontWeight=FontWeight.SemiBold)
+                            paths.forEach {path->
+                                val match=books.firstOrNull {it.path==path}
+                                Text("• "+(match?.title ?:path),
+                                    maxLines=2,overflow=TextOverflow.Ellipsis)
+                            }
+                            HorizontalDivider()
+                        }
+                    }
+                },
+                confirmButton={TextButton(onClick={showDuplicates=false}) {Text(ui("Bağla"))}}
+            )
+        }
         if(showSettingsHome) {
             LibrarySettingsSheet(
                 store=store,appTheme=appTheme,onTheme={updateAppTheme(it)},
