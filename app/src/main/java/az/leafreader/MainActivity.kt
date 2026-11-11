@@ -61,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -348,6 +349,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 verticalAlignment=Alignment.CenterVertically) {
                                 Image(painterResource(R.drawable.kitaread_43_mark),
                                     contentDescription="KitaRead",
+                                    colorFilter=ColorFilter.tint(MaterialTheme.colorScheme.onSurface),
                                     modifier=Modifier.width(45.dp).height(42.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text("KitaRead",fontSize=25.sp,fontWeight=FontWeight.Bold,
