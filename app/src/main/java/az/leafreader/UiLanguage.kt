@@ -278,6 +278,11 @@ object UiLanguage {
         "Janr üzrə irəliləyiş" to Pair("Прогресс по жанрам","Genre progress"),
         "Hələ janr üzrə bitirilmiş kitab yoxdur" to Pair("Пока нет завершённых книг с жанром","No finished books with a genre yet"),
         "Bütün kitablar" to Pair("Все книги","All books"),
+        "Tam backup (ZIP)" to Pair("Полная копия (ZIP)","Full backup (ZIP)"),
+        "Tam bərpa (ZIP)" to Pair("Полное восстановление (ZIP)","Full restore (ZIP)"),
+        "Tam ehtiyat nüsxə kitab fayllarını və bütün qeydləri saxlayır." to Pair("Полная копия включает файлы книг и все заметки.","Full backup includes book files and all notes."),
+        "Tam backup saxlanıldı" to Pair("Полная копия сохранена","Full backup saved"),
+        "Tam bərpa tamamlandı" to Pair("Полное восстановление завершено","Full restore completed"),
         "Oxu gündəliyi" to Pair("Дневник чтения","Reading journal"),
         "Gündəlik" to Pair("Дневник","Journal"),
         "Sitatlar və qeydlər" to Pair("Цитаты и заметки","Quotes & notes"),
@@ -329,9 +334,9 @@ object UiLanguage {
         "Seriya" to Pair("Серия","Series"),
         "Ağıllı axtarış" to Pair("Умный поиск","Smart search"),
         "Kitab, müəllif, seriya, janr, kolleksiya axtar..." to Pair("Поиск книги, автора, серии, жанра, коллекции...","Search title, author, series, genre, collection..."),
-        "3.9 Preview · Offline EPUB / PDF / CBZ / Markdown" to Pair(
-            "Версия 3.9 · Без интернета · EPUB / PDF / CBZ / Markdown",
-            "3.9 Preview · Offline EPUB / PDF / CBZ / Markdown")
+        "4.0 Release Candidate · Offline EPUB / PDF / CBZ / Markdown" to Pair(
+            "Версия 4.0 RC · Без интернета · EPUB / PDF / CBZ / Markdown",
+            "4.0 Release Candidate · Offline EPUB / PDF / CBZ / Markdown")
     )
     fun translate(text:String,language:String):String {
         if(language=="az")return when(text) {
@@ -350,8 +355,8 @@ object UiLanguage {
             "Reader Theme tətbiq temasını izləsin"->"Oxuyucu tətbiqin temasını izləsin"
             "Qlobal Reader Theme seçimi Appearance bölməsindədir."->
                 "Oxuyucunun ümumi temasını Görünüş bölməsindən seç."
-            "3.9 Preview · Offline EPUB / PDF / CBZ / Markdown"->
-                "3.9 İlkin versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
+            "4.0 Release Candidate · Offline EPUB / PDF / CBZ / Markdown"->
+                "4.0 Namizəd versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
             "3.5 Preview · Offline EPUB / PDF / CBZ / Markdown"->
                 "3.5 İlkin versiya · İnternetsiz EPUB / PDF / CBZ / Markdown"
             "3.3.3 Preview · Offline EPUB / PDF / CBZ"->
