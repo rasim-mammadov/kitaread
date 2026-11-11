@@ -26,7 +26,7 @@ object ReaderPassportShare {
             paint.color=Color.rgb(158,207,193)
             paint.textSize=37f
             paint.isFakeBoldText=true
-            canvas.drawText("LEAF READER",95f,129f,paint)
+            canvas.drawText("KITAREAD",95f,129f,paint)
             paint.textSize=27f
             paint.isFakeBoldText=false
             canvas.drawText(tr("Oxucu pasportu"),95f,173f,paint)
