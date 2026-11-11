@@ -21,11 +21,11 @@ object GenreCatalog {
         "Poeziya" to listOf("poetry","poems","poeziya"),
         "Səyahət" to listOf("travel","journey","səyahət"),
         "Biznes" to listOf("business","management","finance","economics","biznes"),
+        "Komiks" to listOf("comic","manga","graphic novel","manhwa"),
         "Roman" to listOf("literary fiction","novel","roman"),
         "Romantika" to listOf("romance","love story","romantika"),
         "Qorxu" to listOf("horror","qorxu"),
-        "Bioqrafiya" to listOf("biography","memoir","autobiography"),
-        "Komiks" to listOf("comic","manga","graphic novel","manhwa")
+        "Bioqrafiya" to listOf("biography","memoir","autobiography")
     )
     fun fromSubjects(subjects:List<String>):String {
         for(subject in subjects) {
