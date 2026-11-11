@@ -212,7 +212,7 @@ fun LibrarySettingsSheet(
                 }
                 if(section=="About") {
                     Text(ui("KitaRead"),fontSize=22.sp,fontWeight=FontWeight.Bold)
-                    Text(ui("4.3.1 Preview · Offline EPUB / PDF / CBZ / Markdown"))
+                    Text(ui("4.3.2 Preview · Offline EPUB / PDF / CBZ / Markdown"))
                 }
             }
         }
