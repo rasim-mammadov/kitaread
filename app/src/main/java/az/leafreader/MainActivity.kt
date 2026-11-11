@@ -659,7 +659,11 @@ class MainActivity : Activity() {
             visibility=if(book.optString("type")=="epub")View.GONE else View.VISIBLE
         }
         content.addView(fit)
-        val dialog=AlertDialog.Builder(this).setTitle("Oxuyucu ayarları").setView(content)
+        val scrollingContent=ScrollView(this).apply {
+            isFillViewport=false
+            addView(content)
+        }
+        val dialog=AlertDialog.Builder(this).setTitle("Oxuyucu ayarları").setView(scrollingContent)
             .setPositiveButton("Tətbiq et") {_,_->
                 val wasPaged=pagedEpub()
                 settings.edit()
