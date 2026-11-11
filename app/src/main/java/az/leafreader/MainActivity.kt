@@ -680,6 +680,7 @@ private fun ReaderScreen(
     var mode by remember {mutableStateOf(optionString("epubMode",prefs.getString("epubMode","scroll") ?: "scroll"))}
     var swipe by remember {mutableStateOf(optionBoolean("swipeTurn",prefs.getBoolean("swipeTurn",true)))}
     var arrows by remember {mutableStateOf(optionBoolean("sideButtons",prefs.getBoolean("sideButtons",false)))}
+    var fitWidth by remember {mutableStateOf(optionBoolean("fitWidth",prefs.getBoolean("fitWidth",false)))}
     var chrome by remember {mutableStateOf(false)}
     var focusMode by rememberSaveable(book.path) {mutableStateOf(false)}
     var brightness by remember {mutableFloatStateOf(prefs.getFloat("readerBrightness",-1f))}
@@ -1016,8 +1017,10 @@ private fun ReaderScreen(
                             if(view.tag !== currentBitmap) {
                                 view.setPage(currentBitmap,
                                     prefs.getFloat("zoom",1f),
-                                    prefs.getBoolean("fitWidth",false))
+                                    fitWidth)
                                 view.tag=currentBitmap
+                            } else if(view.fitWidthEnabled()!=fitWidth) {
+                                view.setFitWidth(fitWidth)
                             }
                         },
                         modifier=Modifier.fillMaxSize()
@@ -1139,6 +1142,7 @@ private fun ReaderScreen(
                                 .put("screenOrientation",rotationMode)
                                 .put("swipeTurn",swipe)
                                 .put("sideButtons",arrows)
+                                .put("fitWidth",fitWidth)
                                 .put("smoothPageTurns",smoothTurns)
                             store.change(book.path) {it.put("readerOptions",snapshot)}
                         } else {
@@ -1152,6 +1156,7 @@ private fun ReaderScreen(
                             rotationMode=prefs.getString("screenOrientation","Auto") ?: "Auto"
                             swipe=prefs.getBoolean("swipeTurn",true)
                             arrows=prefs.getBoolean("sideButtons",false)
+                            fitWidth=prefs.getBoolean("fitWidth",false)
                             smoothTurns=prefs.getBoolean("smoothPageTurns",true)
                             readerFollowsApp=prefs.getBoolean("readerFollowsApp",true)
                             theme=if(readerFollowsApp)
@@ -1282,10 +1287,9 @@ private fun ReaderScreen(
                     Switch(arrows,{arrows=it;saveOption("sideButtons",it)})
                 }
                 if(!isTextBook) {
-                    var fit by remember {mutableStateOf(prefs.getBoolean("fitWidth",false))}
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                         Text("📐  "+ui("Fit to Width"),modifier=Modifier.weight(1f))
-                        Switch(fit,{fit=it;saveOption("fitWidth",it)})
+                        Switch(fitWidth,{fitWidth=it;saveOption("fitWidth",it)})
                     }
                 }
                 Button(onClick={showSettings=false},modifier=Modifier.fillMaxWidth().height(52.dp)) {
