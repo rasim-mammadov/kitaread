@@ -277,6 +277,7 @@ object UiLanguage {
         "100 saat oxu" to Pair("100 часов чтения","100 reading hours"),
         "Janr üzrə irəliləyiş" to Pair("Прогресс по жанрам","Genre progress"),
         "Hələ janr üzrə bitirilmiş kitab yoxdur" to Pair("Пока нет завершённых книг с жанром","No finished books with a genre yet"),
+        "Bütün kitablar" to Pair("Все книги","All books"),
         "Oxu gündəliyi" to Pair("Дневник чтения","Reading journal"),
         "Gündəlik" to Pair("Дневник","Journal"),
         "Sitatlar və qeydlər" to Pair("Цитаты и заметки","Quotes & notes"),
