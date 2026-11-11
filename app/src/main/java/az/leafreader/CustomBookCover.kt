@@ -34,11 +34,7 @@ object CustomBookCover {
             target.outputStream().use {
                 check(image.compress(Bitmap.CompressFormat.JPEG,88,it)){"Üz qabığı saxlanılmadı"}
             }
-            store.change(path){record->
-                if(!record.has("originalCover"))record.put("originalCover",book.optString("cover"))
-                record.put("cover","covers/$filename")
-                record.put("customCover",true)
-            }
+            store.change(path){record->CoverMetadata.setCustom(record,"covers/$filename")}
             return "covers/$filename"
         }catch(e:Exception) {
             target.delete()
@@ -46,12 +42,6 @@ object CustomBookCover {
         }finally {image.recycle()}
     }
     fun restore(store:BookStore,path:String) {
-        store.change(path){record->
-            if(record.has("originalCover")) {
-                record.put("cover",record.optString("originalCover"))
-                record.remove("originalCover")
-            }
-            record.remove("customCover")
-        }
+        store.change(path){record->CoverMetadata.restoreOriginal(record)}
     }
 }
