@@ -20,7 +20,7 @@ object ReaderMedia {
     private fun entries(zip:ZipFile):List<String> = zip.entries().asSequence()
         .filter {!it.isDirectory && it.name.substringAfterLast('.').lowercase() in
             listOf("jpg","jpeg","png","webp") }
-        .map {it.name}.sortedBy {it.lowercase()}.toList()
+        .map {it.name}.sortedWith(ComicPageOrder.comparator).toList()
 
     fun page(file:File,type:String,index:Int):Bitmap = when(type) {
         "pdf" -> ParcelFileDescriptor.open(file,ParcelFileDescriptor.MODE_READ_ONLY).use {desc->
