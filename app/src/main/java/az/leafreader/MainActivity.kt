@@ -97,6 +97,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker) {
     var search by remember {mutableStateOf("")}
     var filter by remember {mutableStateOf("Hamısı")}
     var menuBook by remember {mutableStateOf<ReaderBook?>(null)}
+    var showDashboard by remember {mutableStateOf(false)}
     val filePicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri->
         if(uri!=null) try {
             store.import(uri)
@@ -126,14 +127,24 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker) {
         primary=Accent,secondary=Ink,background=Cream,surface=Color.White,
         onBackground=Ink,onSurface=Ink
     ),shapes=Shapes(medium=RoundedCornerShape(16.dp),large=RoundedCornerShape(24.dp))) {
-        if(selected==null) {
+        if(selected==null && showDashboard) {
+            ReadingDashboard(store,onBack={showDashboard=false})
+        } else if(selected==null) {
             Scaffold(
                 contentWindowInsets=WindowInsets.safeDrawing,
                 containerColor=Cream,
                 topBar={
                     Column(Modifier.fillMaxWidth().padding(start=22.dp,end=22.dp,top=20.dp,bottom=8.dp)) {
-                        Text("Leaf Reader",fontSize=30.sp,fontWeight=FontWeight.Bold,color=Ink)
-                        Text("Sənin şəxsi kitabxanan",fontSize=14.sp,color=Gray)
+                        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Leaf Reader",fontSize=30.sp,fontWeight=FontWeight.Bold,color=Ink)
+                                Text("Sənin şəxsi kitabxanan",fontSize=14.sp,color=Gray)
+                            }
+                            FilledTonalIconButton(onClick={showDashboard=true},
+                                modifier=Modifier.size(50.dp)) {
+                                Icon(Icons.Default.BarChart,"Oxu statistikası")
+                            }
+                        }
                     }
                 },
                 floatingActionButton={
@@ -287,11 +298,23 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,tracker:ReadingSessionT
     var positionInChapter by remember {mutableIntStateOf(0)}
     var webView by remember {mutableStateOf<EpubChapterView?>(null)}
     val bookFile=remember(book.path){File(context.filesDir,book.path)}
-    val textColor=if(theme=="Dark"||theme=="AMOLED")Color(0xFFF6F2E8) else Color(0xFF352F29)
+    val textColor=when(theme) {
+        "Dark","AMOLED","Midnight","Graphite"->Color(0xFFF0EFE9)
+        "Sage"->Color(0xFF304737)
+        "Ocean"->Color(0xFF29465D)
+        "Warm"->Color(0xFF523C2B)
+        else->Color(0xFF352F29)
+    }
     val paper=when(theme) {
         "Dark"->Color(0xFF1C2229)
         "AMOLED"->Color.Black
         "Sepia"->Color(0xFFF3E9D8)
+        "Paper"->Color(0xFFFCFAF5)
+        "Warm"->Color(0xFFF5DFC4)
+        "Sage"->Color(0xFFDCE8D9)
+        "Ocean"->Color(0xFFDCE9EF)
+        "Midnight"->Color(0xFF141F34)
+        "Graphite"->Color(0xFF303339)
         else->Color.White
     }
     fun saveProgress(value:Double) {
@@ -443,8 +466,17 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,tracker:ReadingSessionT
                                 else super.shouldInterceptRequest(view,request)
                             }
                         }
-                        val background=when(theme){"Dark"->"#1C2229";"AMOLED"->"#000000";"Sepia"->"#F3E9D8";else->"#FFFFFF"}
-                        val foreground=if(theme in listOf("Dark","AMOLED"))"#F6F2E8" else "#352F29"
+                        val background=when(theme) {
+                            "Dark"->"#1C2229";"AMOLED"->"#000000";"Sepia"->"#F3E9D8"
+                            "Paper"->"#FCFAF5";"Warm"->"#F5DFC4";"Sage"->"#DCE8D9"
+                            "Ocean"->"#DCE9EF";"Midnight"->"#141F34"
+                            "Graphite"->"#303339";else->"#FFFFFF"
+                        }
+                        val foreground=when(theme) {
+                            "Dark","AMOLED","Midnight","Graphite"->"#F0EFE9"
+                            "Sage"->"#304737";"Ocean"->"#29465D";"Warm"->"#523C2B"
+                            else->"#352F29"
+                        }
                         // Reliable full-width text flow in both modes. The page mode uses
                         // viewport-sized steps, not WebView multi-column CSS.
                         val columns="html{width:100%!important;height:auto!important;overflow-x:hidden!important;}"+
@@ -593,8 +625,10 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,tracker:ReadingSessionT
                 }
                 Spacer(Modifier.height(12.dp))
                 Text("Tema",fontWeight=FontWeight.SemiBold)
-                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    listOf("Light","Sepia","Dark","AMOLED").forEach {t->
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    listOf("Light","Sepia","Dark","AMOLED","Paper","Warm",
+                        "Sage","Ocean","Midnight","Graphite").forEach {t->
                         FilterChip(theme==t,{theme=t;prefs.edit().putString("theme",t).apply()},
                             label={Text(t,fontSize=11.sp)})
                     }
