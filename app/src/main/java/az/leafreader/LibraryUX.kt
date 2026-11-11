@@ -50,6 +50,7 @@ fun LibrarySettingsSheet(
     store:BookStore,appTheme:String,onTheme:(String)->Unit,
     language:String,onLanguage:(String)->Unit,
     onExport:()->Unit,onImport:()->Unit,
+    onFullExport:()->Unit,onFullImport:()->Unit,
     onRestore:(String)->Unit,onSort:(String)->Unit,onClose:()->Unit
 ) {
     var section by remember {mutableStateOf("Settings")}
@@ -178,6 +179,15 @@ fun LibrarySettingsSheet(
                     }
                 }
                 if(section=="Data & Backup") {
+                    Text(ui("Tam ehtiyat nüsxə kitab fayllarını və bütün qeydləri saxlayır."),
+                        fontSize=13.sp)
+                    Button(onClick=onFullExport,modifier=Modifier.fillMaxWidth()) {
+                        Text(ui("Tam backup (ZIP)"))
+                    }
+                    OutlinedButton(onClick=onFullImport,modifier=Modifier.fillMaxWidth()) {
+                        Text(ui("Tam bərpa (ZIP)"))
+                    }
+                    HorizontalDivider()
                     Text(ui("Yalnız metadata: kitab faylları daxil deyil."),fontSize=13.sp)
                     Button(onClick=onExport,modifier=Modifier.fillMaxWidth()) {Text(ui("Export JSON"))}
                     OutlinedButton(onClick=onImport,modifier=Modifier.fillMaxWidth()) {Text(ui("Import JSON"))}
@@ -189,7 +199,7 @@ fun LibrarySettingsSheet(
                 }
                 if(section=="About") {
                     Text(ui("Leaf Reader"),fontSize=22.sp,fontWeight=FontWeight.Bold)
-                    Text(ui("3.9 Preview · Offline EPUB / PDF / CBZ / Markdown"))
+                    Text(ui("4.0 Release Candidate · Offline EPUB / PDF / CBZ / Markdown"))
                 }
             }
         }
