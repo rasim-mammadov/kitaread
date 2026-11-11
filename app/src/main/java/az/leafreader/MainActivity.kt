@@ -148,8 +148,11 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
     var showAdvancedFilters by remember {mutableStateOf(false)}
     var showSearch by remember {mutableStateOf(false)}
     var layoutMode by remember {
-        mutableStateOf(store.setting().getString("libraryLayout","list") ?: "list")
+        mutableStateOf(LibraryPersonalization.normalizeLayout(
+            store.setting().getString("libraryLayout","list") ?: "list"))
     }
+    var libraryFontSize by remember {mutableIntStateOf(LibraryPersonalization.fontSize(store.setting().getInt("libraryFontSize",14)))}
+    var libraryDensity by remember {mutableIntStateOf(LibraryPersonalization.density(store.setting().getInt("libraryDensity",1)))}
     var selecting by remember {mutableStateOf(false)}
     var selectedBooks by remember {mutableStateOf<Set<String>>(emptySet())}
     var showBulkHideConfirm by remember {mutableStateOf(false)}
@@ -342,11 +345,14 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         }
                         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                             IconButton(onClick={
-                                layoutMode=if(layoutMode=="list")"grid" else "list"
+                                layoutMode=LibraryPersonalization.nextLayout(layoutMode)
                                 store.setting().edit().putString("libraryLayout",layoutMode).apply()
                             }) {
-                                Icon(if(layoutMode=="list")Icons.Default.GridView
-                                    else Icons.Default.ViewList,ui("Görünüşü dəyiş"))
+                                Icon(when(layoutMode) {
+                                    "list"->Icons.Default.GridView
+                                    "grid"->Icons.Default.ViewAgenda
+                                    else->Icons.Default.ViewList
+                                },ui("Görünüşü dəyiş"))
                             }
                             Spacer(Modifier.weight(1f))
                             TextButton(onClick={
@@ -453,7 +459,8 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                             (collectionFilter.isEmpty() ||
                                 (0 until collections.length()).any {collections.optString(it)==collectionFilter})
                     }
-                    val ordered=store.sortBooks(visible,sortMode)
+                    val ordered=LibraryPersonalization.pinnedFirst(
+                        store.sortBooks(visible,sortMode),recordsByPath)
                     val recent=if(!selecting && filter=="Hamısı" && search.isBlank())
                         ordered.firstOrNull {book->
                             book.status=="Oxunur" &&
@@ -524,6 +531,27 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                 }
                             }
                         }
+                    } else if(layoutMode==LibraryPersonalization.COMPACT) {
+                        LazyColumn(contentPadding=PaddingValues(bottom=96.dp),
+                            verticalArrangement=Arrangement.spacedBy((2+libraryDensity*2).dp)) {
+                            items(ordered,key={it.path}) { book->
+                                CompactLibraryBook(book,store,
+                                    textSize=libraryFontSize,density=libraryDensity,
+                                    pinned=LibraryPersonalization.pinned(recordsByPath[book.path]),
+                                    selecting=selecting,selected=book.path in selectedBooks,
+                                    onOpen={
+                                        if(selecting)toggleSelection(book.path)
+                                        else {openingMark=null;selectedPath=book.path}
+                                    },
+                                    onMore={menuBook=book},
+                                    onPin={
+                                        store.change(book.path){ record->
+                                            record.put("pinned",!record.optBoolean("pinned",false))
+                                        }
+                                        refreshLibrary()
+                                    })
+                            }
+                        }
                     } else if(layoutMode=="grid") {
                         LazyVerticalGrid(columns=GridCells.Fixed(2),
                             contentPadding=PaddingValues(bottom=96.dp),
@@ -532,9 +560,15 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                             grouped.forEach { (_,groupBooks)->
                                 gridItems(groupBooks,key={it.path}) { book->
                                     SmartGridBook(book,store,
+                                        textSize=libraryFontSize,density=libraryDensity,
+                                        pinned=LibraryPersonalization.pinned(recordsByPath[book.path]),
                                         selected=book.path in selectedBooks,selecting=selecting,
                                         onOpen={openingMark=null;selectedPath=book.path},
                                         onMore={menuBook=book},
+                                        onPin={
+                                            store.change(book.path){it.put("pinned",!it.optBoolean("pinned",false))}
+                                            refreshLibrary()
+                                        },
                                         onSelect={toggleSelection(book.path)})
                                 }
                             }
@@ -548,7 +582,12 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                                         checked=book.path in selectedBooks,
                                         onCheckedChange={toggleSelection(book.path)})
                                     Box(Modifier.weight(1f)) {
-                                        LibraryCard(book,store,onOpen={
+                                        LibraryCard(book,store,libraryFontSize,libraryDensity,
+                                            LibraryPersonalization.pinned(recordsByPath[book.path]),
+                                            onPin={
+                                                store.change(book.path){it.put("pinned",!it.optBoolean("pinned",false))}
+                                                refreshLibrary()
+                                            },onOpen={
                                             if(selecting)toggleSelection(book.path)
                                             else {openingMark=null;selectedPath=book.path}
                                         },onMore={
@@ -662,6 +701,8 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                     refreshLibrary()
                 },
                 onSort={sortMode=it},
+                libraryFontSize=libraryFontSize,onLibraryFontSize={libraryFontSize=it},
+                libraryDensity=libraryDensity,onLibraryDensity={libraryDensity=it},
                 onClose={
                     showSettingsHome=false
                     sortMode=store.setting().getString("librarySort","Son oxunanlar")
