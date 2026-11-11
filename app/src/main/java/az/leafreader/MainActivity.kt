@@ -996,7 +996,7 @@ private fun ReaderScreen(
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                 .padding(horizontal=24.dp).padding(bottom=24.dp)) {
                 Text(ui("Oxuma ayarları"),fontSize=24.sp,fontWeight=FontWeight.Bold)
-                Text(ui("Ekran istiqaməti"),fontWeight=FontWeight.SemiBold)
+                Text("📱  "+ui("Ekran istiqaməti"),fontWeight=FontWeight.SemiBold)
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     listOf("Auto","Portrait","Landscape").forEach {option->
                         FilterChip(
@@ -1015,7 +1015,7 @@ private fun ReaderScreen(
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                    Text(ui("Qlobal temanı izlə"),modifier=Modifier.weight(1f),
+                    Text("🎨  "+ui("Qlobal temanı izlə"),modifier=Modifier.weight(1f),
                         fontWeight=FontWeight.SemiBold)
                     Switch(checked=readerFollowsApp,onCheckedChange={follow->
                         readerFollowsApp=follow
@@ -1025,11 +1025,7 @@ private fun ReaderScreen(
                         onThemeChange(theme)
                     })
                 }
-                Text(ui(if(readerFollowsApp)
-                    "Kitabxanadakı tema oxuyucuda da tətbiq edilir."
-                    else "Kitab üçün ayrıca tema seçilib."),fontSize=12.sp,
-                    color=MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(ui("Oxuma teması · 10 hazır seçim"),fontWeight=FontWeight.SemiBold)
+                Text("🌗  "+ui("Oxuma teması · 10 hazır seçim"),fontWeight=FontWeight.SemiBold)
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     ReadingThemes.presets.forEach {t->
@@ -1044,12 +1040,12 @@ private fun ReaderScreen(
                 }
                 Spacer(Modifier.height(16.dp))
                 if(isTextBook) {
-                    Text(ui("Şrift ölçüsü  "+font.toInt()+" px"),fontWeight=FontWeight.SemiBold)
+                    Text("🔠  "+ui("Şrift ölçüsü  "+font.toInt()+" px"),fontWeight=FontWeight.SemiBold)
                     Slider(font,{font=it; prefs.edit().putInt("fontSize",it.toInt()).apply()},valueRange=12f..34f)
-                    Text(ui("Sətirarası məsafə  "+line.toInt()+"%"),fontWeight=FontWeight.SemiBold)
+                    Text("↕️  "+ui("Sətirarası məsafə  "+line.toInt()+"%"),fontWeight=FontWeight.SemiBold)
                     Slider(line,{line=it; prefs.edit().putInt("lineSpacing",it.toInt()).apply()},valueRange=110f..210f)
                     Spacer(Modifier.height(12.dp))
-                    Text(ui("Mətnin düzülüşü"),fontWeight=FontWeight.SemiBold)
+                    Text("↔️  "+ui("Mətnin düzülüşü"),fontWeight=FontWeight.SemiBold)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                         listOf("left" to "Soldan", "justify" to "İki kənara",
@@ -1065,7 +1061,7 @@ private fun ReaderScreen(
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    Text(ui("Oxuma rejimi"),fontWeight=FontWeight.SemiBold)
+                    Text("📖  "+ui("Oxuma rejimi"),fontWeight=FontWeight.SemiBold)
                     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                         FilterChip(mode=="pages",{mode="pages";prefs.edit().putString("epubMode",mode).apply()},
                             label={Text(ui("Səhifələmə"))})
@@ -1075,17 +1071,17 @@ private fun ReaderScreen(
                 }
                 HorizontalDivider(Modifier.padding(vertical=12.dp))
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                    Text(ui("Swipe ilə səhifə çevirmə"),modifier=Modifier.weight(1f))
+                    Text("👆  "+ui("Swipe ilə səhifə çevirmə"),modifier=Modifier.weight(1f))
                     Switch(swipe,{swipe=it;prefs.edit().putBoolean("swipeTurn",it).apply()})
                 }
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                    Text(ui("Sağ-sol düymələri göstər"),modifier=Modifier.weight(1f))
+                    Text("↔️  "+ui("Sağ-sol düymələri göstər"),modifier=Modifier.weight(1f))
                     Switch(arrows,{arrows=it;prefs.edit().putBoolean("sideButtons",it).apply()})
                 }
                 if(!isTextBook) {
                     var fit by remember {mutableStateOf(prefs.getBoolean("fitWidth",false))}
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                        Text(ui("Fit to Width"),modifier=Modifier.weight(1f))
+                        Text("📐  "+ui("Fit to Width"),modifier=Modifier.weight(1f))
                         Switch(fit,{fit=it;prefs.edit().putBoolean("fitWidth",it).apply()})
                     }
                 }
