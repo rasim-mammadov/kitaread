@@ -134,6 +134,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
     var sortMode by remember {
         mutableStateOf(store.setting().getString("librarySort","Son oxunanlar") ?: "Son oxunanlar")
     }
+    var activeReaderTheme by remember {mutableStateOf(store.setting().getString("theme","Sepia") ?: "Sepia")}
     var appTheme by remember {
         mutableStateOf(store.setting().getString("theme","Sepia") ?: "Sepia")
     }
@@ -141,7 +142,14 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
         appTheme=next
         store.setting().edit().putString("theme",next).apply()
     }
-    val appColors=LibraryPalette.scheme(appTheme)
+    val appColors=LibraryPalette.scheme(if(selected!=null)activeReaderTheme else appTheme)
+    LaunchedEffect(selectedPath) {
+        if(selectedPath!=null) {
+            activeReaderTheme=if(store.setting().getBoolean("readerFollowsApp",true))
+                store.setting().getString("theme","Sepia") ?: "Sepia"
+            else store.setting().getString("readerTheme","Sepia") ?: "Sepia"
+        }
+    }
     SideEffect {
         @Suppress("DEPRECATION")
         (context as? ComponentActivity)?.window?.decorView?.systemUiVisibility=
@@ -379,7 +387,9 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
             }
         } else {
             val book=selected!!
-            ReaderScreen(book,store,tracker,openingMark,onExit={
+            ReaderScreen(book,store,tracker,openingMark,onThemeChange={
+                activeReaderTheme=it
+            },onExit={
                 selectedPath=null
                 openingMark=null
                 refreshLibrary()
@@ -551,7 +561,8 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
 @Composable
 private fun ReaderScreen(
     book:ReaderBook,store:BookStore,tracker:ReadingSessionTracker,
-    initialBookmark:BookStore.BookMark?=null,onExit:()->Unit
+    initialBookmark:BookStore.BookMark?=null,
+    onThemeChange:(String)->Unit={},onExit:()->Unit
 ) {
     val isTextBook=book.type in setOf("epub","md","markdown")
     BackHandler(onBack=onExit)
@@ -615,6 +626,7 @@ private fun ReaderScreen(
     var positionInChapter by remember {mutableIntStateOf(0)}
     var webView by remember {mutableStateOf<EpubChapterView?>(null)}
     val bookFile=remember(book.path){File(context.filesDir,book.path)}
+    LaunchedEffect(theme) {onThemeChange(theme)}
     val textColor=when(theme) {
         "Dark","AMOLED","Midnight","Graphite"->Color(0xFFF0EFE9)
         "Sage"->Color(0xFF304737)
@@ -998,6 +1010,7 @@ private fun ReaderScreen(
                         prefs.edit().putBoolean("readerFollowsApp",follow).apply()
                         theme=if(follow) prefs.getString("theme","Sepia") ?: "Sepia"
                               else prefs.getString("readerTheme","Sepia") ?: "Sepia"
+                        onThemeChange(theme)
                     })
                 }
                 Text(if(readerFollowsApp)
@@ -1010,6 +1023,7 @@ private fun ReaderScreen(
                     ReadingThemes.presets.forEach {t->
                         FilterChip(theme==t.name,{
                             theme=t.name
+                            onThemeChange(t.name)
                             prefs.edit().putString("readerTheme",t.name)
                                 .putBoolean("readerFollowsApp",false).apply()
                             readerFollowsApp=false
