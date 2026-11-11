@@ -592,6 +592,10 @@ private fun ReaderScreen(
     var showSettings by remember {mutableStateOf(false)}
     var showChapters by remember {mutableStateOf(false)}
     var showReaderBookmarks by remember {mutableStateOf(false)}
+    var showChapterSearch by remember {mutableStateOf(false)}
+    var showReadingNotes by remember {mutableStateOf(false)}
+    var draftQuote by remember {mutableStateOf("")}
+    var pendingSearch by remember {mutableStateOf("")}
     var bookmarkRefresh by remember {mutableIntStateOf(0)}
     var readerBookmarkJump by remember {mutableIntStateOf(0)}
     var chapter by rememberSaveable(book.path) {
@@ -768,6 +772,9 @@ private fun ReaderScreen(
                                     }
                                     v.scrollTo(0,(fraction*max).roundToInt())
                                     ready=true
+                                    if(pendingSearch.isNotBlank()) {
+                                        v.findAllAsync(pendingSearch)
+                                    }
                                 },350)
                             }
                             override fun shouldOverrideUrlLoading(view:WebView,request:WebResourceRequest)=true
@@ -898,8 +905,16 @@ private fun ReaderScreen(
                                 overflow=TextOverflow.Ellipsis,color=textColor,
                                 fontWeight=FontWeight.Medium)
                         } else Spacer(Modifier.weight(1f))
+                        if(book.type=="epub") IconButton(onClick={showChapterSearch=true},
+                            modifier=Modifier.size(40.dp)) {
+                            Icon(Icons.Default.Search,"Kitabda axtar",tint=textColor)
+                        }
+                        IconButton(onClick={draftQuote="";showReadingNotes=true},
+                            modifier=Modifier.size(40.dp)) {
+                            Icon(Icons.Default.EditNote,"Qeydlər və sitatlar",tint=textColor)
+                        }
                         if(book.type=="epub") IconButton(onClick={showChapters=true},
-                            modifier=Modifier.size(44.dp)) {
+                            modifier=Modifier.size(40.dp)) {
                             Icon(Icons.Default.List,"Fəsillər",tint=textColor)
                         }
                         IconButton(onClick={
@@ -1047,6 +1062,42 @@ private fun ReaderScreen(
                 }
             }
         }
+    }
+    if(showChapterSearch && book.type=="epub") {
+        ChapterSearchSheet(chapters=chapterFiles,labels=chapterLabels,
+            onJump={index,query->
+                pendingSearch=query
+                if(chapter==index) {
+                    webView?.findAllAsync(query)
+                }else {
+                    chapter=index
+                    fraction=0.0
+                    saveProgress(0.0)
+                }
+                showChapterSearch=false
+            },
+            onSaveQuote={index,snippet->
+                draftQuote=snippet
+                showChapterSearch=false
+                showReadingNotes=true
+            },
+            onDismiss={showChapterSearch=false})
+    }
+    if(showReadingNotes) {
+        ReadingNotesSheet(store=store,bookPath=book.path,
+            currentChapter=chapter,initialQuote=draftQuote,
+            onJump={index->
+                if(book.type=="epub") {
+                    if(index in chapterFiles.indices) {
+                        chapter=index;fraction=0.0;saveProgress(0.0)
+                    }
+                }else if(index in 0 until pageCount) {
+                    chapter=index;fraction=0.0;saveProgress(0.0)
+                }
+                showReadingNotes=false
+                draftQuote=""
+            },
+            onClose={showReadingNotes=false;draftQuote=""})
     }
     if(showReaderBookmarks) {
         BookmarksSheet(store,bookPath=book.path,
