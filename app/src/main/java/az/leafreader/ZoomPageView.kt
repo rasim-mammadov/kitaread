@@ -22,6 +22,7 @@ class ZoomPageView(
     private val onNext: () -> Unit,
     private val onPrevious: () -> Unit,
     private val rtlSwipe:Boolean=false,
+    private val tapZones:Boolean=false,
     private val onToggleControls: () -> Unit,
     private val onZoomChanged: (Float) -> Unit
 ) : View(context) {
@@ -51,7 +52,7 @@ class ZoomPageView(
         object : GestureDetector.SimpleOnGestureListener() {
             override fun onDown(e: MotionEvent): Boolean = true
             override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
-                if (zoom <= 1.05f && width > 0) {
+                if (tapZones && zoom <= 1.05f && width > 0) {
                     // Manga touch zones mirror page progression. Centre toggles toolbar.
                     if (e.x < width * 0.22f) {
                         if (rtlSwipe) onNext() else onPrevious()
