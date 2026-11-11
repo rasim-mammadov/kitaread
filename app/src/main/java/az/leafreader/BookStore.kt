@@ -122,6 +122,125 @@ class BookStore(private val context: Context) {
         return RestoreResult(added,already,missing)
     }
 
+    data class BookMark(val chapter:Int,val fraction:Double,val createdAt:Long)
+
+    /** Supports legacy integer bookmarks from v1/v2. */
+    fun bookmarks(path:String):List<BookMark> {
+        val arr=find(path)?.optJSONArray("bookmarks") ?:return emptyList()
+        return (0 until arr.length()).mapNotNull {i->
+            when(val item=arr.opt(i)) {
+                is JSONObject -> BookMark(item.optInt("chapter",0).coerceAtLeast(0),
+                    item.optDouble("fraction",0.0).coerceIn(0.0,1.0),
+                    item.optLong("createdAt",0L))
+                is Number -> BookMark(item.toInt().coerceAtLeast(0),0.0,0L)
+                else -> null
+            }
+        }
+    }
+    fun hasBookmark(path:String,chapter:Int,fraction:Double):Boolean =
+        bookmarks(path).any {
+            it.chapter==chapter && kotlin.math.abs(it.fraction-fraction)<0.015
+        }
+    fun toggleBookmark(path:String,chapter:Int,fraction:Double):Boolean {
+        val point=fraction.coerceIn(0.0,1.0)
+        var added=false
+        change(path) { book->
+            val previous=bookmarks(path)
+            val exists=previous.any {it.chapter==chapter &&
+                kotlin.math.abs(it.fraction-point)<0.015}
+            val changed=if(exists)previous.filterNot {it.chapter==chapter &&
+                kotlin.math.abs(it.fraction-point)<0.015}
+            else previous+BookMark(chapter,point,System.currentTimeMillis())
+            added=!exists
+            val arr=JSONArray()
+            changed.forEach {arr.put(JSONObject()
+                .put("chapter",it.chapter).put("fraction",it.fraction)
+                .put("createdAt",it.createdAt))}
+            book.put("bookmarks",arr)
+        }
+        return added
+    }
+    fun removeBookmark(path:String,mark:BookMark) {
+        change(path) { book->
+            val arr=JSONArray()
+            bookmarks(path).filterNot {it==mark}.forEach {
+                arr.put(JSONObject().put("chapter",it.chapter)
+                    .put("fraction",it.fraction).put("createdAt",it.createdAt))
+            }
+            book.put("bookmarks",arr)
+        }
+    }
+    fun collections():List<String> =
+        records().flatMap {row->
+            val arr=row.optJSONArray("collections") ?:JSONArray()
+            (0 until arr.length()).map {arr.optString(it)}
+        }.filter {it.isNotBlank()}.distinct().sorted()
+    fun addToCollection(path:String,name:String) {
+        val label=name.trim().take(50)
+        if(label.isBlank())return
+        change(path) { row->
+            val current=row.optJSONArray("collections") ?:JSONArray()
+            if((0 until current.length()).none {current.optString(it)==label})
+                current.put(label)
+            row.put("collections",current)
+        }
+    }
+    fun removeFromCollection(path:String,name:String) {
+        change(path) {row->
+            val current=row.optJSONArray("collections") ?:JSONArray()
+            val updated=JSONArray()
+            (0 until current.length()).map {current.optString(it)}
+                .filter {it!=name}.forEach {updated.put(it)}
+            row.put("collections",updated)
+        }
+    }
+
+    private fun epubMetadata(file:File):Triple<String,String,List<String>> {
+        return try {
+            ZipFile(file).use {zip->
+                val container=zip.getEntry("META-INF/container.xml") ?:return@use Triple("","",emptyList())
+                val opfPath=zip.getInputStream(container).use {stream->
+                    xml(stream).firstOrNull {it.first=="rootfile"}
+                        ?.second?.get("full-path")
+                } ?:return@use Triple("","",emptyList())
+                val entry=zip.getEntry(opfPath) ?:return@use Triple("","",emptyList())
+                val parser=Xml.newPullParser()
+                zip.getInputStream(entry).use {stream->
+                    parser.setInput(stream,"UTF-8")
+                    var tag=""
+                    var metadata=false
+                    var title=""
+                    var author=""
+                    val subjects=mutableListOf<String>()
+                    var event=parser.eventType
+                    while(event!=XmlPullParser.END_DOCUMENT) {
+                        when(event) {
+                            XmlPullParser.START_TAG -> {
+                                tag=parser.name.substringAfter(':').lowercase()
+                                if(tag=="metadata")metadata=true
+                            }
+                            XmlPullParser.TEXT -> if(metadata) {
+                                val value=parser.text?.trim().orEmpty()
+                                if(value.isNotBlank())when(tag) {
+                                    "title" -> if(title.isBlank())title=value
+                                    "creator" -> if(author.isBlank())author=value
+                                    "subject" -> subjects.add(value)
+                                }
+                            }
+                            XmlPullParser.END_TAG -> {
+                                val closed=parser.name.substringAfter(':').lowercase()
+                                if(closed=="metadata")metadata=false
+                                tag=""
+                            }
+                        }
+                        event=parser.next()
+                    }
+                    Triple(title,author,subjects)
+                }
+            }
+        }catch(_:Exception){Triple("","",emptyList())}
+    }
+
     fun import(uri:Uri):String {
         val title=context.contentResolver.query(uri,null,null,null,null)?.use {cursor->
             if(cursor.moveToFirst()) {
@@ -136,7 +255,12 @@ class BookStore(private val context: Context) {
         context.contentResolver.openInputStream(uri)!!.use {input->
             FileOutputStream(file).use {input.copyTo(it)}
         }
-        val item=JSONObject().put("title",title).put("path",id).put("type",extension)
+        val meta=if(extension=="epub")epubMetadata(file) else Triple("","",emptyList())
+        val item=JSONObject().put("title",meta.first.ifBlank {title.substringBeforeLast('.')})
+            .put("author",meta.second)
+            .put("genre",GenreCatalog.fromSubjects(meta.third))
+            .put("subjects",JSONArray(meta.third))
+            .put("path",id).put("type",extension)
             .put("page",0).put("scrollFraction",0.0).put("progress",0).put("status","Oxunmayıb")
         CoverExtractor.extract(context,file,extension,id)?.let {item.put("cover",it)}
         val books=records()+item
