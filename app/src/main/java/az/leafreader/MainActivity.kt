@@ -329,9 +329,9 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                             Row(modifier=Modifier.weight(1f),
                                 verticalAlignment=Alignment.CenterVertically) {
-                                Image(painterResource(R.drawable.kitaread_original_mark),
+                                Image(painterResource(R.drawable.kitaread_43_mark),
                                     contentDescription="KitaRead",
-                                    modifier=Modifier.width(88.dp).height(34.dp))
+                                    modifier=Modifier.width(45.dp).height(42.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text("KitaRead",fontSize=25.sp,fontWeight=FontWeight.Bold,
                                     color=MaterialTheme.colorScheme.onBackground)
