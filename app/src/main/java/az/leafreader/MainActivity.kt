@@ -269,12 +269,15 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
         if(book.type=="epub" && mode=="pages") {
             val view=webView
             if(view!=null) {
-                val step=view.width.coerceAtLeast(1)
-                val next=(view.scrollX.toFloat()/step).roundToInt()+dir
-                if(next in 0 until chapterPages) {
-                    view.scrollTo(next*step,0)
-                    positionInChapter=next
-                    saveProgress(if(chapterPages<=1)0.0 else next.toDouble()/(chapterPages-1))
+                val step=(view.height*0.88f).toInt().coerceAtLeast(1)
+                val maxScroll=(view.contentHeight*view.scale-view.height).toInt().coerceAtLeast(0)
+                val next=(view.scrollY.toFloat()/step).roundToInt()+dir
+                val target=(next*step).coerceIn(0,maxScroll)
+                if((dir>0 && view.scrollY<maxScroll-8) ||
+                    (dir<0 && view.scrollY>8)) {
+                    view.scrollTo(0,target)
+                    positionInChapter=next.coerceAtLeast(0)
+                    saveProgress(if(maxScroll==0)0.0 else target.toDouble()/maxScroll)
                     return
                 }
             }
@@ -322,14 +325,15 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
                         var startX=0f;var startY=0f
                         val view=EpubChapterView(ctx) {v->
                             if(mode=="pages") {
-                                val step=v.width.coerceAtLeast(1)
-                                val total=(v.maxHorizontalScroll()/step)+1
-                                chapterPages=total.coerceAtLeast(1)
-                                val index=(v.scrollX.toFloat()/step).roundToInt()
+                                val step=(v.height*0.88f).toInt().coerceAtLeast(1)
+                                val maxScroll=(v.contentHeight*v.scale-v.height)
+                                    .toInt().coerceAtLeast(0)
+                                chapterPages=(maxScroll+step-1)/step+1
+                                val index=(v.scrollY.toFloat()/step).roundToInt()
                                     .coerceIn(0,chapterPages-1)
                                 positionInChapter=index
-                                if(ready)saveProgress(if(chapterPages<=1)0.0 else
-                                    index.toDouble()/(chapterPages-1))
+                                if(ready)saveProgress(if(maxScroll==0)0.0 else
+                                    v.scrollY.toDouble()/maxScroll)
                             }else if(ready) {
                                 val max=(v.contentHeight*v.scale-v.height).toInt().coerceAtLeast(0)
                                 saveProgress(if(max==0)0.0 else v.scrollY.toDouble()/max)
@@ -361,15 +365,15 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
                         view.webViewClient=object:WebViewClient() {
                             override fun onPageFinished(v:WebView,url:String?) {
                                 v.postDelayed({
-                                    val width=v.width.coerceAtLeast(1)
+                                    val max=(v.contentHeight*v.scale-v.height)
+                                        .toInt().coerceAtLeast(0)
                                     if(mode=="pages") {
-                                        chapterPages=(view.maxHorizontalScroll()/width+1).coerceAtLeast(1)
-                                        positionInChapter=(fraction*(chapterPages-1)).roundToInt()
-                                        v.scrollTo(positionInChapter*width,0)
-                                    } else {
-                                        val max=(v.contentHeight*v.scale-v.height).toInt().coerceAtLeast(0)
-                                        v.scrollTo(0,(fraction*max).roundToInt())
+                                        val step=(v.height*0.88f).toInt().coerceAtLeast(1)
+                                        chapterPages=(max+step-1)/step+1
+                                        positionInChapter=(fraction*max/step).roundToInt()
+                                            .coerceIn(0,chapterPages-1)
                                     }
+                                    v.scrollTo(0,(fraction*max).roundToInt())
                                     ready=true
                                 },350)
                             }
@@ -382,16 +386,12 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
                         }
                         val background=when(theme){"Dark"->"#1C2229";"AMOLED"->"#000000";"Sepia"->"#F3E9D8";else->"#FFFFFF"}
                         val foreground=if(theme in listOf("Dark","AMOLED"))"#F6F2E8" else "#352F29"
-                        val columns=if(mode=="pages")
-                            "html{width:100%!important;height:100%!important;overflow-x:auto!important;overflow-y:hidden!important;}"+
-                            "body{width:100%!important;height:100%!important;min-height:0!important;"+
-                            "-webkit-column-width:calc(100vw - 48px)!important;column-width:calc(100vw - 48px)!important;"+
-                            "-webkit-column-gap:48px!important;column-gap:48px!important;"+
-                            "column-fill:auto!important;overflow:visible!important;}"+
-                            "p,div,section,article{break-before:auto!important;break-after:auto!important;}"
-                        else "html{width:100%!important;height:auto!important;overflow-x:hidden!important;overflow-y:auto!important;}"+
+                        // Reliable full-width text flow in both modes. The page mode uses
+                        // viewport-sized steps, not WebView multi-column CSS.
+                        val columns="html{width:100%!important;height:auto!important;overflow-x:hidden!important;}"+
                             "body{width:100%!important;height:auto!important;min-height:100%!important;"+
-                            "column-count:initial!important;column-width:auto!important;overflow:visible!important;}"
+                            "-webkit-column-count:initial!important;column-count:initial!important;"+
+                            "column-width:auto!important;white-space:normal!important;overflow:visible!important;}"
                         val css="<meta name='viewport' content='width=device-width,initial-scale=1.0' />"+
                             "<style>html{margin:0!important;padding:0!important;}body{"+
                             "background:"+background+"!important;color:"+foreground+"!important;"+
