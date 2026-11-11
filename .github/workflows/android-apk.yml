@@ -2,7 +2,7 @@ name: Build Leaf Reader APK
 on:
   workflow_dispatch:
   push:
-    branches: [main, 'feature/leaf-reader-2.0', 'feature/leaf-reader-2.1', 'feature/leaf-reader-3.0']
+    branches: [main, 'feature/leaf-reader-2.0', 'feature/leaf-reader-2.1', 'feature/leaf-reader-3.0', 'feature/leaf-reader-3.1-stability']
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,9 +21,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
-      - run: gradle :app:assembleDebug --no-daemon
+      - run: gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: LeafReader-3.0.3-EPUB-typography-debug-apk
+          name: LeafReader-3.1-stability-preview-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
