@@ -394,6 +394,7 @@ private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker,incomingBook:U
                     store.hideBook(path,false)
                     refreshLibrary()
                 },
+                onSort={sortMode=it},
                 onClose={
                     showSettingsHome=false
                     sortMode=store.setting().getString("librarySort","Son oxunanlar")
@@ -518,7 +519,8 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
                 .background(Accent),contentAlignment=Alignment.Center) {
                 if(image!=null)Image(image.asImageBitmap(),null,Modifier.fillMaxSize(),
                     contentScale=ContentScale.Crop)
-                else Icon(Icons.Default.MenuBook,null,Modifier.size(44.dp),tint=Color.White)
+                else Icon(Icons.Default.MenuBook,null,Modifier.size(44.dp),
+                    tint=Color.White)
             }
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -536,8 +538,10 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
                     overflow=TextOverflow.Ellipsis)
                 LinearProgressIndicator(progress={book.progress/100f},
                     modifier=Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(8.dp)),
-                    color=Accent,trackColor=Space)
-                Text(book.progress.toString()+"% oxunub",fontSize=12.sp,color=Accent)
+                    color=MaterialTheme.colorScheme.primary,
+                    trackColor=MaterialTheme.colorScheme.surfaceVariant)
+                Text(book.progress.toString()+"% oxunub",fontSize=12.sp,
+                    color=MaterialTheme.colorScheme.primary)
             }
             IconButton(onClick=onMore) {Icon(Icons.Default.MoreVert,"Kitab ayarları")}
         }
