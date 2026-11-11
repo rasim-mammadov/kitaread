@@ -60,16 +60,37 @@ private val Gray=Color(0xFF667571)
 private val Space=Color(0xFFEEEFE9)
 
 class MainActivity:ComponentActivity() {
+    private lateinit var tracker: ReadingSessionTracker
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (::tracker.isInitialized &&
+            (event.actionMasked == MotionEvent.ACTION_DOWN ||
+             event.actionMasked == MotionEvent.ACTION_MOVE)) tracker.interaction()
+        return super.dispatchTouchEvent(event)
+    }
+    override fun onPause() {
+        if (::tracker.isInitialized) tracker.pause()
+        super.onPause()
+    }
+    override fun onResume() {
+        super.onResume()
+        if (::tracker.isInitialized) tracker.resume()
+    }
+    override fun onDestroy() {
+        if (::tracker.isInitialized) tracker.end()
+        super.onDestroy()
+    }
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
         @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility=0
-        setContent { LeafApp(BookStore(this)) }
+        val store=BookStore(this)
+        tracker=ReadingSessionTracker(store)
+        setContent { LeafApp(store,tracker) }
     }
 }
 
 @Composable
-private fun LeafApp(store:BookStore) {
+private fun LeafApp(store:BookStore,tracker:ReadingSessionTracker) {
     val context=LocalContext.current
     var books by remember {mutableStateOf(store.books())}
     var selected by remember {mutableStateOf<ReaderBook?>(null)}
@@ -141,7 +162,7 @@ private fun LeafApp(store:BookStore) {
             }
         } else {
             val book=selected!!
-            ReaderScreen(book,store,onExit={
+            ReaderScreen(book,store,tracker,onExit={
                 selected=null
                 books=store.books()
             })
@@ -208,7 +229,7 @@ private fun LibraryCard(book:ReaderBook,store:BookStore,onOpen:()->Unit,onMore:(
 }
 
 @Composable
-private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
+private fun ReaderScreen(book:ReaderBook,store:BookStore,tracker:ReadingSessionTracker,onExit:()->Unit) {
     BackHandler(onBack=onExit)
     val context=LocalContext.current
     val prefs=remember {store.setting()}
@@ -312,7 +333,11 @@ private fun ReaderScreen(book:ReaderBook,store:BookStore,onExit:()->Unit) {
         }
     }
     DisposableEffect(book.path) {
-        onDispose {webView?.destroy()}
+        tracker.begin(book.path)
+        onDispose {
+            tracker.end()
+            webView?.destroy()
+        }
     }
     Scaffold(contentWindowInsets=WindowInsets.safeDrawing,containerColor=paper) { padding->
         Box(Modifier.fillMaxSize().padding(padding).background(paper)) {
