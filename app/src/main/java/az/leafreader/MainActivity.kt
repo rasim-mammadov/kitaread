@@ -1119,7 +1119,10 @@ private fun ReaderScreen(
                 chapterFiles=extracted
             }
             else pageCount=withContext(Dispatchers.IO){ReaderMedia.count(bookFile,book.type)}
-            chapter=chapter.coerceIn(0,(if(isTextBook)chapterFiles.size else pageCount)-1)
+            // Empty/malformed books must not throw from coerceIn(0,-1).
+            val availablePages=if(isTextBook)chapterFiles.size else pageCount
+            require(availablePages>0) { "Kitabda oxuna bilən səhifə tapılmadı" }
+            chapter=chapter.coerceIn(0,availablePages-1)
             if(book.type=="cbz" && comicMode==ComicModes.DOUBLE)
                 chapter=ComicModes.firstPage(chapter,comicMode)
         }catch(e:Exception){loadError=e.message ?: "Kitabı açmaq mümkün olmadı"}
@@ -1245,6 +1248,8 @@ private fun ReaderScreen(
                         view.webViewClient=object:WebViewClient() {
                             override fun onPageFinished(v:WebView,url:String?) {
                                 v.postDelayed({
+                                    // A chapter may have been replaced before its delayed restore.
+                                    if(v !== webView || !v.isAttachedToWindow)return@postDelayed
                                     val max=(v.contentHeight*v.scale-v.height)
                                         .toInt().coerceAtLeast(0)
                                     if(mode=="pages") {
@@ -1343,10 +1348,13 @@ private fun ReaderScreen(
                     try {
                         val index=chapter
                         val next=withContext(Dispatchers.IO) {
-                            fun load(page:Int):Bitmap =
-                                pageCache.get(page) ?:ReaderMedia.page(bookFile,book.type,page).also {
-                                    pageCache.put(page,it)
+                            fun load(page:Int):Bitmap {
+                                synchronized(pageCache) { pageCache.get(page) }?.let {return it}
+                                val decoded=ReaderMedia.page(bookFile,book.type,page)
+                                return synchronized(pageCache) {
+                                    pageCache.get(page) ?: decoded.also {pageCache.put(page,it)}
                                 }
+                            }
                             val first=load(index)
                             if(book.type=="cbz" && comicMode==ComicModes.DOUBLE) {
                                 val second=if(index+1<pageCount)load(index+1) else null
@@ -1357,7 +1365,7 @@ private fun ReaderScreen(
                         loadError=null
                         // Neighbouring pages decode off the UI thread for a fast next turn.
                         val neighbor=index+if(comicMode==ComicModes.DOUBLE && book.type=="cbz")2 else 1
-                        if(neighbor in 0 until pageCount && pageCache.get(neighbor)==null) {
+                        if(neighbor in 0 until pageCount && synchronized(pageCache) {pageCache.get(neighbor)==null}) {
                             prefetchScope.launch(Dispatchers.IO) {
                                 runCatching {
                                     val image=ReaderMedia.page(bookFile,book.type,neighbor)
