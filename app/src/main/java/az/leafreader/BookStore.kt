@@ -504,24 +504,42 @@ class BookStore(private val context: Context) {
             }catch(_:Exception){}
         }
 
-        // EPUB2 NCX normally supplies navLabel + content src separately.
+        // Parse EPUB2 NCX using XML rather than a regex: navPoint elements can be
+        // nested, and a regex stops at the first nested closing tag.
         navigation.filter {it.extension.lowercase()=="ncx"}.forEach {ncx->
             try {
-                val source=ncx.readText(Charsets.UTF_8)
-                val points=Regex("""<navPoint\b[^>]*>(.*?)</navPoint>""",
-                    setOf(RegexOption.IGNORE_CASE,RegexOption.DOT_MATCHES_ALL))
-                points.findAll(source).forEach {match->
-                    val block=match.groupValues[1]
-                    val name=Regex("""<text\b[^>]*>(.*?)</text>""",
-                        setOf(RegexOption.IGNORE_CASE,RegexOption.DOT_MATCHES_ALL))
-                        .find(block)?.groupValues?.get(1)?.replace(Regex("<[^>]+>"),"")?.trim()
-                    val link=Regex("""<content\b[^>]*src\s*=\s*["']([^"']+)["']""",
-                        RegexOption.IGNORE_CASE).find(block)?.groupValues?.get(1)
-                    if(!name.isNullOrBlank() && !link.isNullOrBlank()) {
-                        val href=java.net.URLDecoder.decode(link.substringBefore('#'),"UTF-8")
-                        val target=File(ncx.parentFile,href).canonicalFile
-                        if(target.path.startsWith(root.path+File.separator))
-                            labels.putIfAbsent(target.path,name.take(100))
+                ncx.inputStream().use {input->
+                    val parser=Xml.newPullParser().apply {setInput(input,"UTF-8")}
+                    val stack=mutableListOf<MutableMap<String,String>>()
+                    var event=parser.eventType
+                    while(event!=XmlPullParser.END_DOCUMENT) {
+                        val tag=parser.name?.substringAfter(':')
+                        when(event) {
+                            XmlPullParser.START_TAG -> when(tag) {
+                                "navPoint" -> stack.add(mutableMapOf())
+                                "text" -> if(stack.isNotEmpty()) {
+                                    stack.last()["label"]=parser.nextText().trim()
+                                }
+                                "content" -> if(stack.isNotEmpty()) {
+                                    parser.getAttributeValue(null,"src")?.let {
+                                        stack.last()["href"]=it
+                                    }
+                                }
+                            }
+                            XmlPullParser.END_TAG -> if(tag=="navPoint" && stack.isNotEmpty()) {
+                                val item=stack.removeAt(stack.lastIndex)
+                                val name=item["label"]
+                                val link=item["href"]
+                                if(!name.isNullOrBlank() && !link.isNullOrBlank()) {
+                                    val href=java.net.URLDecoder.decode(
+                                        link.substringBefore('#'),"UTF-8")
+                                    val target=File(ncx.parentFile,href).canonicalFile
+                                    if(target.path.startsWith(root.path+File.separator))
+                                        labels.putIfAbsent(target.path,name.take(100))
+                                }
+                            }
+                        }
+                        event=parser.next()
                     }
                 }
             }catch(_:Exception){}
