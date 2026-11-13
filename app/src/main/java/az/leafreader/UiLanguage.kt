@@ -9,6 +9,11 @@ val LocalUiLanguage=compositionLocalOf {"az"}
 object UiLanguage {
     val choices=listOf("az","ru","en")
     private val dictionary=mapOf(
+        "Versiya" to Pair("Версия","Version"),
+        "İnternetsiz oxuma · EPUB / PDF / CBZ / Markdown" to Pair(
+            "Чтение без интернета · EPUB / PDF / CBZ / Markdown",
+            "Offline reading · EPUB / PDF / CBZ / Markdown"),
+        "Səhifə yüklənmədi" to Pair("Не удалось загрузить страницу","Could not load page"),
         "Settings" to Pair("Настройки","Settings"),
         "Appearance" to Pair("Оформление","Appearance"),
         "Reading" to Pair("Чтение","Reading"),
