@@ -10,11 +10,30 @@ import java.util.zip.ZipFile
 import kotlin.math.min
 
 object ReaderMedia {
+    // Cache CBZ page names: repeatedly sorting every ZIP entry on each page turn
+    // makes large comics noticeably slower. The cache is bounded and invalidated
+    // when an archive is replaced (size or modified timestamp changes).
+    private data class CbzIndex(val length:Long,val modified:Long,val names:List<String>)
+    private val cbzIndexes=object:LinkedHashMap<String,CbzIndex>(8,0.75f,true) {
+        override fun removeEldestEntry(eldest:MutableMap.MutableEntry<String,CbzIndex>?):Boolean = size>4
+    }
+    private fun cbzEntries(file:File):List<String> = synchronized(cbzIndexes) {
+        val key=file.absolutePath
+        val old=cbzIndexes[key]
+        if(old!=null && old.length==file.length() && old.modified==file.lastModified())
+            old.names
+        else ZipFile(file).use {zip->
+            entries(zip).also {names->
+                cbzIndexes[key]=CbzIndex(file.length(),file.lastModified(),names)
+            }
+        }
+    }
+
     fun count(file:File,type:String):Int= when(type) {
         "pdf" -> ParcelFileDescriptor.open(file,ParcelFileDescriptor.MODE_READ_ONLY).use {
             PdfRenderer(it).use { pdf->pdf.pageCount }
         }
-        "cbz" -> ZipFile(file).use {zip->entries(zip).size}
+        "cbz" -> cbzEntries(file).size
         else -> 0
     }
     private fun entries(zip:ZipFile):List<String> = zip.entries().asSequence()
@@ -37,8 +56,9 @@ object ReaderMedia {
                 }
             }
         }
-        "cbz" -> ZipFile(file).use {zip->
-            val name=entries(zip)[index]
+        "cbz" -> {
+            val name=cbzEntries(file)[index]
+            ZipFile(file).use {zip->
             val entry=zip.getEntry(name)
             val bounds=BitmapFactory.Options().apply {inJustDecodeBounds=true}
             zip.getInputStream(entry).use {BitmapFactory.decodeStream(it,null,bounds)}
@@ -52,6 +72,7 @@ object ReaderMedia {
             zip.getInputStream(entry).use {
                 BitmapFactory.decodeStream(it,null,options)
                     ?:throw IllegalArgumentException("Şəkil açılmadı")
+            }
             }
         }
         else -> throw IllegalArgumentException("Unsupported format: $type")
