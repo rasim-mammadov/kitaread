@@ -1657,7 +1657,7 @@ private fun ReaderScreen(
                     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                         FilterChip(mode=="pages",{mode="pages";saveOption("epubMode",mode)},
                             label={Text(ui("Səhifələmə"))})
-                        FilterChip(mode=="scroll",{mode="scroll";prefs.edit().putString("epubMode",mode).apply()},
+                        FilterChip(mode=="scroll",{mode="scroll";saveOption("epubMode",mode)},
                             label={Text(ui("Continuous scroll"))})
                     }
                 }
