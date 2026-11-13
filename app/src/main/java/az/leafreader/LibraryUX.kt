@@ -57,6 +57,12 @@ fun LibrarySettingsSheet(
 ) {
     var section by remember {mutableStateOf("Settings")}
     val prefs=store.setting()
+    val context=androidx.compose.ui.platform.LocalContext.current
+    // Read the installed APK's version instead of displaying an outdated preview label.
+    val appVersion=remember(context) {
+        @Suppress("DEPRECATION")
+        context.packageManager.getPackageInfo(context.packageName,0).versionName ?: "—"
+    }
     var follow by remember {mutableStateOf(prefs.getBoolean("readerFollowsApp",true))}
     var readerTheme by remember {mutableStateOf(prefs.getString("readerTheme","Sepia") ?: "Sepia")}
     var sort by remember {mutableStateOf(prefs.getString("librarySort","Son oxunanlar") ?: "Son oxunanlar")}
@@ -212,7 +218,9 @@ fun LibrarySettingsSheet(
                 }
                 if(section=="About") {
                     Text(ui("KitaRead"),fontSize=22.sp,fontWeight=FontWeight.Bold)
-                    Text(ui("4.3.2 Preview · Offline EPUB / PDF / CBZ / Markdown"))
+                    Text(ui("Versiya")+": "+appVersion)
+                    Text(ui("İnternetsiz oxuma · EPUB / PDF / CBZ / Markdown"),
+                        color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=13.sp)
                 }
             }
         }
