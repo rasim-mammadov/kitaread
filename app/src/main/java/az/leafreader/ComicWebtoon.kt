@@ -57,7 +57,7 @@ fun ComicWebtoon(
                     contentScale=ContentScale.FillWidth)
             }else {
                 Box(Modifier.fillMaxWidth().height(280.dp),contentAlignment=Alignment.Center) {
-                    if(failure)Text("Page ${index+1} could not load",color=Color.White)
+                    if(failure)Text(ui("Səhifə yüklənmədi")+" · ${index+1}",color=Color.White)
                     else CircularProgressIndicator()
                 }
             }
