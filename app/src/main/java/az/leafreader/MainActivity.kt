@@ -1401,7 +1401,7 @@ private fun ReaderScreen(
                             if(view.tag !== currentBitmap) {
                                 view.setPage(currentBitmap,
                                     prefs.getFloat("zoom",1f),
-                                    fitWidth,smoothTurns)
+                                    fitWidth,smoothTurns && book.type=="cbz")
                                 view.tag=currentBitmap
                             } else if(view.fitWidthEnabled()!=fitWidth) {
                                 view.setFitWidth(fitWidth)
