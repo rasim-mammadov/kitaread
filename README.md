@@ -1,4 +1,4 @@
-# Leaf Reader
+# KitaRead
 
 Android EPUB, PDF və CBZ oxuyucusu, kitab statusları və avtomatik scroll mövqeyi saxlanması.
 
