@@ -9,17 +9,37 @@
 [![Android](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)](https://developer.android.com/)
 [![Kotlin](https://img.shields.io/badge/Language-Kotlin-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 ![Version](https://img.shields.io/badge/Version-1.1-blue)
-![Status](https://img.shields.io/badge/Status-Development-orange)
+![Status](https://img.shields.io/badge/Status-APK%20Available-brightgreen)
+
+[![Download APK](https://img.shields.io/badge/Download-KitaRead%20v1.1%20APK-2EA44F?logo=android&logoColor=white&style=for-the-badge)](https://github.com/rasim-mammadov/kitaread/releases/download/v1.1/KitaRead-v1.1.apk)
+
+[Release page](https://github.com/rasim-mammadov/kitaread/releases/tag/v1.1)
 
 </div>
 
 ---
 
+## Download & installation
+
+**KitaRead v1.1 is now available as an Android APK**, published on November 24, 2026.
+
+- [Download KitaRead-v1.1.apk](https://github.com/rasim-mammadov/kitaread/releases/download/v1.1/KitaRead-v1.1.apk)
+- [View GitHub Release](https://github.com/rasim-mammadov/kitaread/releases/tag/v1.1)
+
+**Requirements:** Android 8.0 (API 26) or later.
+
+1. Download the APK to your Android device.
+2. Open the downloaded file.
+3. If prompted, allow installation from the specific browser or file manager used to open it.
+4. Install and launch KitaRead. You can disable that installation permission afterwards.
+
+Android Studio is not required to install the APK. The app is not currently distributed through Google Play or the App Store.
+
 ## Overview
 
 **KitaRead** is an Android e-book and document reader designed around a simple personal library and a distraction-free reading flow. It supports importing locally stored EPUB, PDF, and CBZ files, navigating their contents, and resuming at a saved reading position.
 
-> **Development status:** This repository contains an early **v1.1** implementation. The app has **not yet been fully validated on physical Android devices**. Some features and file variants may require further testing and refinement.
+> **Development status:** v1.1 is publicly available for download and initial use. Initial testing has been completed, but comprehensive validation across physical Android devices and document variants is still ongoing.
 
 ## Features
 
@@ -30,6 +50,9 @@
 - **Resume reading** — store reading position and scroll progress locally.
 - **Page navigation** — move between PDF pages, CBZ images, or EPUB chapters.
 - **Local storage** — maintain book metadata on-device.
+- **Offline reading** — read locally imported books without an internet connection.
+- **Reading statistics** — track reading activity and habits.
+- **Free to use** — no paywall for current reading features.
 
 ## Technology
 
@@ -44,7 +67,7 @@
 | Local preferences | Android `SharedPreferences` |
 | Continuous integration | GitHub Actions (debug APK build) |
 
-## Getting started
+## Getting started (for developers)
 
 **Requirements:** Android Studio, JDK 17, and Android SDK 35. The app configuration specifies **minimum Android API level 26**.
 
@@ -76,6 +99,10 @@ To inspect available workflow runs and their build artifacts, open [GitHub Actio
 - Add verified application screenshots and a short demonstration once testing is complete.
 
 These items describe intended improvements, not functionality claimed to be complete.
+
+## Feedback & roadmap
+
+Bug reports, feature suggestions and feedback are welcome through [GitHub Issues](https://github.com/rasim-mammadov/kitaread/issues). Future plans include continued Android improvements and exploring distribution through Google Play and an iOS version for the App Store.
 
 ## Project structure
 
